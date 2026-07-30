@@ -29,6 +29,19 @@ export function rotateDirection(direction: Direction, rotation: Rotation): Direc
 }
 
 /**
+ * The direction facing the other way — a half-turn, so `opposite` is its own inverse.
+ *
+ * Two rules lean on it. **The slide's travel direction**: a tile inserted at the *north* arrow pushes the
+ * column *south*, so the line is walked in `opposite(side)` and the far end is the square the tile falls
+ * out of. **The one illegal insertion** (pg. 2, "The only exception"): the arrow that would put the tile
+ * straight back where the last one came out is the one on the *same line, opposite side* — because the
+ * tile a push ejects always leaves by the far end of the line it travelled.
+ */
+export function opposite(direction: Direction): Direction {
+  return rotateDirection(direction, 180);
+}
+
+/**
  * Which edges of a tile are open, for a shape at a rotation — the one place a tile's *geometry* is
  * defined, so movement (L2) and the fixed-board transcription agree by construction.
  *
@@ -38,6 +51,29 @@ export function rotateDirection(direction: Direction, rotation: Rotation): Direc
 export function openings(shape: TileShape, rotation: Rotation): readonly Direction[] {
   const rotated = new Set(BASE_OPENINGS[shape].map((direction) => rotateDirection(direction, rotation)));
   return DIRECTIONS.filter((direction) => rotated.has(direction));
+}
+
+/** The row/column delta of one step in each direction. Row 0 is the top edge, so `north` decrements. */
+const STEPS: Readonly<Record<Direction, Position>> = {
+  north: { row: -1, col: 0 },
+  east: { row: 0, col: 1 },
+  south: { row: 1, col: 0 },
+  west: { row: 0, col: -1 },
+};
+
+/**
+ * The square one step from `position` in `direction`. Pure coordinate arithmetic — it does **not** clamp
+ * to the board, because both callers want to know when they have walked off it: the slide stops after
+ * exactly 7 squares by construction, and L2's flood-fill rejects an off-board neighbour explicitly.
+ */
+export function neighbor(position: Position, direction: Direction): Position {
+  const step = STEPS[direction];
+  return { row: position.row + step.row, col: position.col + step.col };
+}
+
+/** Whether two squares are the same. Positions are compared by value all over the slide. */
+export function samePosition(a: Position, b: Position): boolean {
+  return a.row === b.row && a.col === b.col;
 }
 
 /**

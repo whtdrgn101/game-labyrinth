@@ -1,6 +1,6 @@
 # D2c findings — building a Game Hub game outside the monorepo
 
-Raw log from scaffolding this repo and shipping L0 against the **published** `@game-hub/kernel@1.1.0` and
+Raw log from scaffolding this repo and shipping L0–L1 against the **published** `@game-hub/kernel@1.1.0` and
 `@game-hub/ui-kit@1.0.0`. The platform's `docs/game-creation.md` recipe was followed top to bottom; every
 place it assumed a workspace, or a published package fell short, is written down here — including the
 unflattering parts and the things I could not test from out here.
@@ -11,6 +11,12 @@ resolve to registry tarballs with `sha512` integrity hashes and real directories
 `pnpm typecheck`, `pnpm lint`, `pnpm format:check` clean; `pnpm test` = **60 tests, `src/engine/**` at
 100%/100%/100%/100%**. The coverage gate was confirmed to actually _bite_ by adding an untested branch and
 watching it fail, then reverting.
+
+**Re-verified at L1 (2026-07-30):** same four gates clean, `pnpm test` = **167 tests, `src/engine/**` still at
+100%/100%/100%/100%**. L1 is the first slice with a real mechanic, so it is the first real exercise of the
+kernel's `record()` and `makeSeating` from the registry copy rather than from source — **both worked with no
+friction at all**, and the seat helper's Labyrinth-bound `GameError` subclass survives the round trip
+(asserted in `tests/kernel.test.ts` and again in `tests/applyAction.test.ts`). One new finding, §14.
 
 **Verdict up front:** the four-subpath package shape works out-of-repo essentially as documented. Nothing
 was blocked; nothing needed a workaround that changes the game's design. What's missing is all
@@ -211,3 +217,23 @@ corners are printed on the board.
 
 Low stakes individually; together they're the difference between a game's setup code being written and being
 assembled.
+
+### 14. A move log has no readable half until the client exists (L1 → L4)
+
+`MoveRecord` is `{ seq, type, playerId, payload? }` — there is no human-readable field, by design: the hub
+renders a feed from a game-specific `describe(move)` living in the game's **client** (Container's
+`GameLog.tsx`), passed to the ui-kit's shared `ActivityFeed`. That is the right seam — plain English is
+presentation, and it keeps the engine from inventing a wording the UI then has to work around.
+
+The out-of-repo consequence is the same shape as finding 6, one layer along. L1's `INSERT` payload was written
+to carry everything a reader needs (`side`, `line`, `rotation`, `tileId`, `ejectedTileId`, `wrapped`), but
+**nothing can check that it is sufficient until L4 writes the `describe` and D2d renders it in a real host.**
+A payload that turns out to be missing a field is discovered three slices after it was designed. There is a
+cheap mitigation an external author would not think of unaided: assert in the *engine* tests that every field
+`describe` will want is present and stable — which is what `insert.test.ts`'s exact-log-entry assertion does,
+deliberately spelling the whole payload out rather than spot-checking keys.
+
+> **Hub-side suggestion (small):** one line in `game-creation.md` §4 saying that a game's `record()` payload is
+> the *input to its client's `describe`*, so payloads should be designed against the sentence they will
+> eventually render. The rule "everything logged is public" is stated loudly; the rule "everything the feed
+> will say must be in the payload" is not stated at all.

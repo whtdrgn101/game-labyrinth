@@ -30,6 +30,7 @@ export default defineConfig({
         'src/engine/**/tests/**', // test files + shared helpers
         'src/engine/**/index.ts', // public + folder barrels (re-exports only)
         'src/engine/core/types.ts', // compile-time only (domain interfaces)
+        'src/engine/actions/action.ts', // compile-time only (the Action union)
         // Bot excludes, pre-declared so L5 only has to flip the `include` line above.
         'src/bot/**/tests/**',
         'src/bot/**/index.ts',

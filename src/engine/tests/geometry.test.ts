@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DIRECTIONS, ROTATIONS } from '../core';
 import type { Direction, Rotation, TileShape } from '../core';
-import { isFixedPosition, openings, rotateDirection } from '../internal';
+import { isFixedPosition, neighbor, openings, opposite, rotateDirection, samePosition } from '../internal';
 
 describe('rotateDirection', () => {
   it('turns a quarter-turn clockwise per 90°', () => {
@@ -17,6 +17,50 @@ describe('rotateDirection', () => {
       expect(rotateDirection(rotateDirection(direction, 180), 180)).toBe(direction);
       expect(rotateDirection(rotateDirection(direction, 90), 270)).toBe(direction);
     }
+  });
+});
+
+describe('opposite', () => {
+  it('faces each direction the other way', () => {
+    expect(opposite('north')).toBe('south');
+    expect(opposite('east')).toBe('west');
+    expect(opposite('south')).toBe('north');
+    expect(opposite('west')).toBe('east');
+  });
+
+  it('is its own inverse and never returns its input', () => {
+    for (const direction of DIRECTIONS) {
+      expect(opposite(opposite(direction))).toBe(direction);
+      expect(opposite(direction)).not.toBe(direction);
+    }
+  });
+});
+
+describe('neighbor', () => {
+  it('steps one square, with north towards row 0', () => {
+    const middle = { row: 3, col: 3 };
+    expect(neighbor(middle, 'north')).toEqual({ row: 2, col: 3 });
+    expect(neighbor(middle, 'east')).toEqual({ row: 3, col: 4 });
+    expect(neighbor(middle, 'south')).toEqual({ row: 4, col: 3 });
+    expect(neighbor(middle, 'west')).toEqual({ row: 3, col: 2 });
+  });
+
+  it('is undone by a step back, and does not clamp to the board', () => {
+    const corner = { row: 0, col: 0 };
+    for (const direction of DIRECTIONS) {
+      expect(neighbor(neighbor(corner, direction), opposite(direction))).toEqual(corner);
+    }
+    // Deliberately unclamped — L2's flood-fill needs to *see* the off-board neighbour to reject it.
+    expect(neighbor(corner, 'north')).toEqual({ row: -1, col: 0 });
+    expect(neighbor({ row: 6, col: 6 }, 'east')).toEqual({ row: 6, col: 7 });
+  });
+});
+
+describe('samePosition', () => {
+  it('compares squares by value, not identity', () => {
+    expect(samePosition({ row: 2, col: 5 }, { row: 2, col: 5 })).toBe(true);
+    expect(samePosition({ row: 2, col: 5 }, { row: 5, col: 2 })).toBe(false);
+    expect(samePosition({ row: 2, col: 5 }, { row: 2, col: 4 })).toBe(false);
   });
 });
 

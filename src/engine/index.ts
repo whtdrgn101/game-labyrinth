@@ -1,7 +1,7 @@
 // Public API of @game-hub/game-labyrinth/engine. Consumers (./module, ./client, ./bot) import only from here.
 //
-// L0 ships the data spine + setup. The mechanics arrive in later slices: the slide (L1), movement, treasure
-// and the win condition (L2) — see ROADMAP.md.
+// L0 ships the data spine + setup; L1 adds the slide (the maze-moving half of a turn) and the action seam.
+// Movement, the treasure flip and the win condition arrive with L2 — see ROADMAP.md.
 
 // Domain types
 export type {
@@ -52,4 +52,13 @@ export type { CreateGameOptions, NewPlayer } from './createGame';
 
 // Board geometry — a tile's openings are the single definition of connectivity, shared by the UI (drawing
 // a tile), L1 (the slide) and L2 (reachability), so nothing re-derives it.
-export { isFixedPosition, openings, rotateDirection, tileAt } from './internal';
+export { isFixedPosition, neighbor, openings, opposite, rotateDirection, samePosition, tileAt } from './internal';
+
+// The slide (L1): the 12 arrows, where each one pushes, and which of them are legal right now. The UI
+// draws its arrows from `legalInsertions`; the bot enumerates from the same list. Nothing re-derives the
+// no-reverse rule (pg. 2, "The only exception").
+export { INSERTIONS, entrySquare, exitSquare, isLegalInsertion, legalInsertions, linePath } from './internal';
+
+// Actions — the move seam the host, the UI and the bot all go through.
+export { applyAction, insert, legalActions } from './actions';
+export type { Action, ActionType } from './actions';

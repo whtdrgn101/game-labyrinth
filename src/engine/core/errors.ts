@@ -10,6 +10,10 @@ export type LabyrinthErrorCode =
   | 'WRONG_PHASE'
   // Not one of the 12 arrows (pg. 2), or the one insertion that undoes the last push ("The only exception").
   | 'ILLEGAL_INSERTION'
+  // The extra tile was turned to something that isn't one of its four orientations. Separate from
+  // ILLEGAL_INSERTION because it is a different mistake: the arrow was fine, the tile's facing was not —
+  // and the host's `parseAction` (L3) wants to tell a client which half of its payload was wrong.
+  | 'INVALID_ROTATION'
   // The target square isn't reachable along connected paths from where the pawn stands (pg. 2).
   | 'UNREACHABLE';
 
