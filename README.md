@@ -30,6 +30,13 @@ lockfile resolves `@game-hub/*` to registry tarballs with integrity hashes, and 
 
 ## Status
 
+**D2d shipped — the Game Hub hosts this package, and the pilot's question is answered.** The hub installs
+`@game-hub/game-labyrinth` like any other dependency (its `exports` resolving to the compiled `dist/` below),
+registers it with one config entry, and ships it in its production Docker image as the sixth playable game —
+with **no** alias, path mapping or build shim reaching back into this repo. `pnpm pack:smoke` is the check
+that keeps that true: it packs the tarball, installs it plus its peers from the public registry into a
+throwaway project outside this repo, and plays a game through all four subpaths under plain `node`.
+
 **L4 (functional stage) shipped — the game is playable.** L0 laid the data spine (rules types, tile/treasure
 data, the fixed board transcribed from the rulebook's board photo, and `createGame` with an injected-rng
 shuffle, orientations and deal); L1 added the slide (the 12 arrows, the no-reverse rule, pawns carried along a
@@ -77,10 +84,21 @@ pnpm test:watch
 pnpm typecheck       # strict TS across all four subpaths
 pnpm lint            # ESLint 9 flat config — real hazards, not a second typecheck
 pnpm format:check    # Prettier (hand-wrap Markdown; *.md is Prettier-ignored)
+pnpm build           # tsc → dist/ (JS + .d.ts + inline-source maps), what publishConfig points at
+pnpm pack:smoke      # pack, install outside this repo, play a game under plain node, typecheck a consumer
 ```
+
+⚠️ **Relative imports in the shipped sources carry an explicit `.js` extension** (`'../engine/index.js'`) —
+`tsc` emits them verbatim and Node ESM resolves neither extensions nor directories, so extensionless ones
+would produce a tarball that throws on a host's first import while every command above stayed green.
+`pack:smoke` is what catches it.
 
 CI (`.github/workflows/ci.yml`) runs exactly those, in that order, on a runner with no access to the platform
 monorepo.
+
+**Using this package in a host, before it is published:** `pnpm pack` here, then depend on the tarball. The
+hub does exactly that from a committed `vendor/` directory, with a one-command refresh loop
+(`pnpm labyrinth:refresh` over there) — see its `vendor/README.md`.
 
 ## Rules, and what's original
 

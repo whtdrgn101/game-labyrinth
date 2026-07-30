@@ -1,5 +1,5 @@
-import { TREASURES } from '../engine';
-import type { TreasureName } from '../engine';
+import { TREASURES } from '../engine/index.js';
+import type { TreasureName } from '../engine/index.js';
 
 /**
  * A **generated** visual identity for the 24 treasures — the functional stage of L4.

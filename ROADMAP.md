@@ -5,14 +5,22 @@ and the platform's proof that a game can be built entirely **outside** the hub m
 published `@game-hub/kernel` and `@game-hub/ui-kit`. See [`README.md`](./README.md) for the pilot story and
 [`docs/d2c-findings.md`](./docs/d2c-findings.md) for what that cost.
 
-**Status:** **L4 (functional stage) shipped** (2026-07-30) — the game is **playable**: a 7×7 maze drawn from
+**Status:** **D2d shipped** (2026-07-30) — this package is now **installed and playable in the Game Hub**.
+The pilot's question is answered: a game built out here, against published `@game-hub/*`, hosts in the hub as
+an ordinary dependency resolving to compiled `dist/` — no Vite alias, no tsconfig include, nothing reaching
+back into the monorepo — and `docker compose up --build` over there produces an image where Labyrinth is the
+playable sixth game. This repo gained a real build (`tsconfig.build.json` → `dist/`, `publishConfig`,
+`prepack`, version `0.1.0`) and `pnpm pack:smoke`, which installs the tarball outside this repo and plays a
+game under plain `node`. **Next: L4b, the art pass (comps-first), then L5, the bot.** (Publishing to npm is
+the one thing not done — the hub vendors the packed tarball meanwhile.)
+
+Earlier: **L4 (functional stage)** (2026-07-30) — the game became **playable**: a 7×7 maze drawn from
 the engine's own `openings()`, the 12 arrows with the banned one visibly dead and explaining itself, the extra
 tile with a rotation control, the flood-fill highlighted and clickable, "stay put" as a real button, per-seat
 found rows and face-down counts, the hunted card (yours only, a card back otherwise), and the move log in
 plain English. Verified in a real browser, not inferred: a throwaway Vite harness mounted the shipped
 `Board.tsx` over a real `viewFor` projection and drove a whole turn through the real `parseAction` +
-`applyAction` (evidence below). 352 tests, `src/engine/**` still at 100%. **Next: L4b, the art pass
-(comps-first), then L5, the bot.**
+`applyAction` (evidence below). 352 tests, `src/engine/**` still at 100%.
 
 Earlier: **L3** (2026-07-30) — the backend seam: the real `GameModule`, `viewFor`'s three-case redaction (your
 own stack cut to its top card, everyone else's to a count), a shape-only `parseAction`, the error→HTTP map,
@@ -340,6 +348,26 @@ gate turns on with L5.
   face-down counts, all affordances gated on `canDrive`/phase/`busy`/`ended`); `describe.ts` (the feed's plain
   English from the payloads alone); `Status.tsx`; the `GameClient` with a **lazy** board. One engine change,
   ruling 14. 57 client tests (352 total), `src/engine/**` still at 100%.
+- **D2d — the hub consumes this package** ✅ (2026-07-30): the slice that made all of the above *real*.
+  This repo became **installable** — a `tsc` build to `dist/` (`tsconfig.build.json`) behind
+  `publishConfig` rewriting all four subpaths, version `0.1.0`, `files: ["dist"]`, `prepack`, and
+  explicit `.js` extensions on every relative specifier in the shipped sources (the platform's D2a lesson,
+  hit here exactly as predicted: `tsc` emits them verbatim and Node ESM resolves neither extensions nor
+  directories). `scripts/pack-smoke.mjs` (adapted from the kernel's, wired into CI) packs the tarball,
+  installs it **plus its peers from the public registry** into a throwaway project outside this repo, and
+  plays a game through all four subpaths under plain `node` — then typechecks a consumer against the
+  shipped `.d.ts` under `nodenext`. Peers moved to `@game-hub/kernel@^1.2.0`, with the ui-kit and React
+  marked **optional** (only `./client` needs them). **Finding §16 is retired:** kernel 1.2.0 carries each
+  seat's resolved colour into `createGame`, so `NewGameOptions` is now literally
+  `Parameters<GameModule['createGame']>[0]` and the module member is called with no cast and no barrel
+  bypass. Hub-side, the game hosts as an ordinary dependency — no Vite alias, no tsconfig include — and
+  `docker compose up --build` produces an image where Labyrinth is the playable sixth game (catalog entry,
+  a full game over REST against the container, the lazy board chunk fetched from the built assets). Three
+  host-side findings came out of it, all logged in the hub's `docs/track-d-externalize-games.md`
+  "Delivered in D2d": Vite's dev-server pre-bundler forking `@game-hub/ui-kit` into two copies (which
+  silently broke the injected REST base URL), pnpm fetching *registry* copies of the hub's own packages to
+  satisfy this package's peers, and the `@source` glob question — **answered: it works unchanged**, the
+  hub's `@source '../node_modules/@game-hub'` reaches this package's compiled `dist/` (§11, §21 closed).
 - **L4b — the art pass (comps-first)**: original illustration for the tiles, the 24 treasures and the pawns,
   in the classic enchanted-labyrinth theme. Nothing about the seam or the board's structure changes — L4
   isolated the two things art replaces (`TileFace.tsx`, `treasures.tsx`) for exactly this. Findings feed the
@@ -549,15 +577,24 @@ through the **real** `parseLabyrinthAction` → `applyAction`. Headless Chromium
 Zero console errors throughout. Screenshots at 1280px and 320px are in the scratchpad; the 320px one has no
 horizontal overflow and the monograms are still readable at a 35px tile.
 
-**What L4b (art) and D2d (host wiring) still need:**
+**What L4b (art) still needs:** original tile fills/frames, the 24 treasure illustrations and pawn shapes.
+Only `TileFace.tsx` and `treasures.tsx` should change; `Board.tsx`'s structure, the testids and `describe.ts`
+are the contract. Keep the "board survives without the host's CSS tokens" property.
 
-- **L4b:** original tile fills/frames, the 24 treasure illustrations and pawn shapes. Only `TileFace.tsx` and
-  `treasures.tsx` should change; `Board.tsx`'s structure, the testids and `describe.ts` are the contract. Keep
-  the "board survives without the host's CSS tokens" property.
-- **D2d:** the one thing this repo still cannot check — that the **lazy** board really code-splits once the
-  package is installed under `node_modules` (Track D §3), that the host's `@source` glob reaches the installed
-  game (the mechanism is verified, the pnpm hoisting is not), and that the host defines the ui-kit's semantic
-  tokens (`docs/d2c-findings.md` §21). The board's testids — `board`, `maze`, `tile-<row>-<col>`,
-  `arrow-<side>-<line>`, `extra-tile`, `extra-rotate-cw`/`-ccw`, `stay-put`, `hunted-card`, `seat-<id>`,
-  `seat-found-<id>`, `seat-stack-<id>`, `pawn-<id>`, `labyrinth-banner`, `labyrinth-log` — are the e2e
-  contract from here on.
+**What D2d checked, and the answers** (the three things this repo could not test alone — all now measured
+against the hub's production container):
+
+- **The lazy board really code-splits from inside `node_modules`** (Track D §3's open worry). The built hub
+  serves six `Board-*.js` chunks; a browser opening Labyrinth fetches exactly one — 18.4 kB.
+- **The host's `@source` glob reaches the installed game.** The hub's existing
+  `@source '../node_modules/@game-hub'` follows pnpm's symlink and scans the compiled `.js` in `dist/`:
+  `max-w-[34rem]`, `lg:max-w-[20rem]` and `outline-offset-[-3px]` — utilities that exist nowhere in the hub's
+  own sources — are in the stylesheet the container serves. **No glob change was needed** (§11 closed).
+- **The host defines the ui-kit's semantic tokens** (§21). The hub does, so the chrome renders; the finding
+  stands for hosts that don't, and `TileFace.tsx`'s literal fills remain the reason a mis-wired host would
+  lose the panels and not the maze.
+
+The board's testids — `board`, `maze`, `tile-<row>-<col>`, `arrow-<side>-<line>`, `extra-tile`,
+`extra-rotate-cw`/`-ccw`, `stay-put`, `hunted-card`, `seat-<id>`, `seat-found-<id>`, `seat-stack-<id>`,
+`pawn-<id>`, `labyrinth-banner`, `labyrinth-log` — are the e2e contract from here on, and the hub's
+`ui/e2e/labyrinth.spec.ts` now depends on them.

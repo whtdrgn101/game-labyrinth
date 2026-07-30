@@ -8,9 +8,9 @@ import {
   SEAT_COLORS,
   START_CORNERS,
   TREASURES,
-} from './core';
-import type { LabyrinthPlayer, LabyrinthState, PlayerColor, Tile } from './core';
-import { buildBoard, isPlayerColor, randomRotation, shuffle } from './internal';
+} from './core/index.js';
+import type { LabyrinthPlayer, LabyrinthState, PlayerColor, Tile } from './core/index.js';
+import { buildBoard, isPlayerColor, randomRotation, shuffle } from './internal/index.js';
 
 /** Input for a single seat when creating a game. */
 export interface NewPlayer {

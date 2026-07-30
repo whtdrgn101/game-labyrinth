@@ -1,5 +1,5 @@
-import { GameError } from '../engine';
-import type { LabyrinthErrorCode } from '../engine';
+import { GameError } from '../engine/index.js';
+import type { LabyrinthErrorCode } from '../engine/index.js';
 import type { ErrorResponse } from '@game-hub/kernel';
 
 /**

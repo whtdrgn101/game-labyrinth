@@ -1,5 +1,5 @@
-import { DIRECTIONS, ROTATIONS, SLIDE_LINES } from '../engine';
-import type { Action, Direction, Rotation, SlideLine } from '../engine';
+import { DIRECTIONS, ROTATIONS, SLIDE_LINES } from '../engine/index.js';
+import type { Action, Direction, Rotation, SlideLine } from '../engine/index.js';
 import type { ParseResult } from '@game-hub/kernel';
 
 /**

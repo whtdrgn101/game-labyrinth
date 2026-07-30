@@ -1,6 +1,6 @@
 import { makeSeating } from '@game-hub/kernel';
-import { GameError, SEAT_COLORS } from '../core';
-import type { LabyrinthPlayer, PlayerColor } from '../core';
+import { GameError, SEAT_COLORS } from '../core/index.js';
+import type { LabyrinthPlayer, PlayerColor } from '../core/index.js';
 
 /**
  * Is this one of the four pawn colours (pg. 1 Set Up)? The single runtime definition of a legal colour,

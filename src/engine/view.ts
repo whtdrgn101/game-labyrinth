@@ -10,7 +10,7 @@ import type {
   Position,
   Tile,
   TreasureName,
-} from './core';
+} from './core/index.js';
 
 // `Viewer` is a kernel primitive; re-export it so consumers take it from this surface rather than
 // reaching for the kernel themselves (the convention every hub game's `view.ts` follows).

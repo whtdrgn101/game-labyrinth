@@ -1,5 +1,5 @@
-import { BOARD_SIZE, FIXED_TILES } from '../core';
-import type { Board, FixedTileSpec, Position, Tile } from '../core';
+import { BOARD_SIZE, FIXED_TILES } from '../core/index.js';
+import type { Board, FixedTileSpec, Position, Tile } from '../core/index.js';
 
 const squareKey = (row: number, col: number): string => `${row},${col}`;
 

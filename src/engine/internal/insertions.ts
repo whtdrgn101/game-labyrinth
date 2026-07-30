@@ -1,6 +1,6 @@
-import { BOARD_SIZE, DIRECTIONS, SLIDE_LINES } from '../core';
-import type { Insertion, LabyrinthState, Position } from '../core';
-import { neighbor, opposite } from './geometry';
+import { BOARD_SIZE, DIRECTIONS, SLIDE_LINES } from '../core/index.js';
+import type { Insertion, LabyrinthState, Position } from '../core/index.js';
+import { neighbor, opposite } from './geometry.js';
 
 /**
  * The 12 arrows (pg. 2, "There are 12 arrows along the edge of the board. They are marking the rows where

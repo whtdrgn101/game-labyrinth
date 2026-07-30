@@ -1,9 +1,9 @@
-import { GameError } from '../core';
-import type { LabyrinthState } from '../core';
-import { seatOf } from '../internal';
-import type { Action } from './action';
-import { insert } from './insert';
-import { move } from './move';
+import { GameError } from '../core/index.js';
+import type { LabyrinthState } from '../core/index.js';
+import { seatOf } from '../internal/index.js';
+import type { Action } from './action.js';
+import { insert } from './insert.js';
+import { move } from './move.js';
 
 /**
  * Apply an action for `playerId`, enforcing turn order — the single entry point for a move, and the one

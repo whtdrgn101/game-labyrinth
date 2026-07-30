@@ -23,9 +23,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{ts,tsx}'],
+    // `.mjs` covers `scripts/` (the D2d pack smoke) — plain Node, no TypeScript, but the same hazards.
+    files: ['**/*.{ts,tsx,mjs}'],
     languageOptions: {
-      // The engine, the module seam and `vitest.config.ts` all run under Node.
+      // The engine, the module seam, `vitest.config.ts` and the scripts all run under Node.
       globals: { ...globals.node },
     },
     rules: {

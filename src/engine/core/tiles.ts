@@ -1,4 +1,4 @@
-import type { PlayerColor, Position, Rotation, TileShape, TreasureName } from './types';
+import type { PlayerColor, Position, Rotation, TileShape, TreasureName } from './types.js';
 
 /**
  * One of the 16 tiles printed on the board itself (pg. 1, "1 game board with 16 fixed path tiles").

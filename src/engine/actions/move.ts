@@ -1,6 +1,6 @@
-import { GameError, START_CORNERS } from '../core';
-import type { LabyrinthPlayer, LabyrinthState, Position, TreasureName } from '../core';
-import { activePlayer, isOnBoard, isReachable, record, samePosition, tileAt, withPlayer } from '../internal';
+import { GameError, START_CORNERS } from '../core/index.js';
+import type { LabyrinthPlayer, LabyrinthState, Position, TreasureName } from '../core/index.js';
+import { activePlayer, isOnBoard, isReachable, record, samePosition, tileAt, withPlayer } from '../internal/index.js';
 
 /**
  * Move your playing piece — the second half of a turn, and the half that **ends** it (pg. 2, "2. Moving

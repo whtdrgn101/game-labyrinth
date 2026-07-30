@@ -1,24 +1,25 @@
-import { createGame } from '../engine';
-import type { LabyrinthState, NewPlayer, PlayerColor } from '../engine';
+import { createGame } from '../engine/index.js';
+import type { Action, LabyrinthState, NewPlayer, PlayerColor } from '../engine/index.js';
+import type { GameModule } from './context.js';
 
 /**
- * What the host hands a module to open a game, **plus** each seat's chosen pawn colour.
+ * What the host hands a module to open a game — **the kernel's own `createGame` parameter**, derived from
+ * the contract rather than restated, so it cannot drift from it.
  *
- * The kernel's `GameModule.createGame` (contract 1) is typed `players: { name: string }[]` — there is no
- * colour channel in the contract at all. A wider parameter type is still assignable to it (a `{ name }` is
- * a `{ name, color? }`), so this is forward-compatible rather than a fork: the day the kernel carries a
- * seat's pick through, this module already reads it. Until then every host in existence calls this with
- * names only, and `createGame` fills the pawns in palette order — which is exactly what the platform's own
- * colour default does, so the two agree by construction. See `docs/d2c-findings.md` §16.
+ * History (worth keeping, because it is the D2c pilot's one contract change): kernel contract 1 typed the
+ * member `players: { name: string }[]` with no colour channel at all, and Labyrinth needs one — a pawn
+ * colour *is* the corner you start on and must return to (pg. 1 Set Up, pg. 2 Ending the Game), i.e. rules
+ * data, not a tint. L3 worked around it by declaring a **wider** parameter here (still assignable, since a
+ * `{ name }` is a `{ name, color? }`) and re-exporting `newLabyrinthGame` from the `./module` barrel so a
+ * host with picks to pass could bypass `labyrinthModule.createGame`, whose visible signature was the
+ * kernel's narrower one. That escape hatch is **retired**: `@game-hub/kernel` 1.2.0 carries each seat's
+ * resolved colour into `createGame` (`docs/d2c-findings.md` §16 — the finding this repo raised and the
+ * platform acted on), so the module now reads the pick straight off the contract type.
  *
  * `color` is `string`, not `PlayerColor`: it comes off the wire, and validating it here would be a second
  * definition of "the four colours" sitting next to the engine's.
  */
-export interface NewGameOptions {
-  readonly id: string;
-  readonly players: readonly { readonly name: string; readonly color?: string }[];
-  readonly rng: () => number;
-}
+export type NewGameOptions = Parameters<GameModule<LabyrinthState, Action>['createGame']>[0];
 
 /**
  * Open a fresh Labyrinth game. All of the game's randomness is spent here — the tile shuffle, every tile's

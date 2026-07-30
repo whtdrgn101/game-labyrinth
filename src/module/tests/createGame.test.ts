@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { GameError, SEAT_COLORS, START_CORNERS } from '../../engine';
-import type { LabyrinthState } from '../../engine';
 import { newLabyrinthGame } from '../createGame';
 import type { NewGameOptions } from '../createGame';
 import { labyrinthModule } from '../index';
@@ -75,15 +74,28 @@ describe('module createGame — the colour picks', () => {
     }
   });
 
-  it('flows through the module member itself once a host has picks to give it', () => {
-    // ⚠️ The cast is the finding, not a shortcut. `labyrinthModule` is declared as `GameModule<…>`, so its
-    // `createGame` is typed by **kernel contract 1** — `players: { name }[]`, with nowhere to put a colour.
-    // The implementation behind it already accepts one (`NewGameOptions`), so the wiring is proven ready
-    // here and the day the kernel carries picks through, nothing in this package changes. Until then a host
-    // that has picks must call the barrel's `newLabyrinthGame` instead. See `docs/d2c-findings.md` §16.
-    const create = labyrinthModule.createGame as (opts: NewGameOptions) => LabyrinthState;
-    const game = create({ id: 'g', players: [{ name: 'Ann', color: 'blue' }, { name: 'Bob' }], rng: rng() });
+  it('flows through the module member itself — no cast, the contract carries the pick (kernel 1.2.0)', () => {
+    // The L3 escape hatch, retired. This call used to need `labyrinthModule.createGame as (opts:
+    // NewGameOptions) => LabyrinthState`, because contract 1 typed the member `players: { name }[]` and a
+    // host with picks had to bypass it via the barrel's `newLabyrinthGame`. Kernel 1.2.0 widened the
+    // member (`docs/d2c-findings.md` §16 — this repo's finding, acted on platform-side), so the seat's
+    // resolved colour is part of the call the host already makes. ⚠️ If a future kernel ever drops the
+    // field, this line stops compiling — which is the point of writing it with no cast.
+    const game = labyrinthModule.createGame({
+      id: 'g',
+      players: [{ name: 'Ann', color: 'blue' }, { name: 'Bob' }],
+      rng: rng(),
+    });
     expect(game.players.map((player) => player.color)).toEqual(['blue', 'red']);
+
+    // …and `NewGameOptions` is now literally the contract's parameter, not a wider local restatement:
+    // the module's own implementation type accepts exactly what the host hands the member.
+    const sameShape: NewGameOptions = {
+      id: 'g',
+      players: [{ name: 'Ann', color: 'blue' }, { name: 'Bob' }],
+      rng: rng(),
+    };
+    expect(newLabyrinthGame(sameShape).players.map((player) => player.color)).toEqual(['blue', 'red']);
   });
 
   it('spends the host’s injected rng and nothing else — same seed, same game', () => {

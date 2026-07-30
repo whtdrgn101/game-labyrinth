@@ -1,4 +1,4 @@
-import type { LabyrinthView } from '../engine';
+import type { LabyrinthView } from '../engine/index.js';
 
 /**
  * Labyrinth's header status line — the shell's `Status` slot: whose turn it is and which of the turn's two

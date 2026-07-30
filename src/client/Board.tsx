@@ -9,15 +9,23 @@ import {
   SLIDE_LINES,
   START_CORNERS,
   tileAt,
-} from '../engine';
-import type { Direction, Insertion, LabyrinthView, PlayerColor, Position, Rotation, SlideLine } from '../engine';
+} from '../engine/index.js';
+import type {
+  Direction,
+  Insertion,
+  LabyrinthView,
+  PlayerColor,
+  Position,
+  Rotation,
+  SlideLine,
+} from '../engine/index.js';
 import { ActionTip, ActivityFeed, Button, cn, GameOver, seatIdentity, TurnBanner } from '@game-hub/ui-kit';
-import type { BoardProps } from './types';
-import * as labyrinthApi from './api';
-import { describeMoveRecord } from './describe';
-import { PAWN_INK, TileFace, TileSwatch } from './TileFace';
-import type { PawnOnTile } from './TileFace';
-import { TreasureChip } from './treasures';
+import type { BoardProps } from './types.js';
+import * as labyrinthApi from './api.js';
+import { describeMoveRecord } from './describe.js';
+import { PAWN_INK, TileFace, TileSwatch } from './TileFace.js';
+import type { PawnOnTile } from './TileFace.js';
+import { TreasureChip } from './treasures.js';
 
 /**
  * Labyrinth's board — the whole game as one plugin the shell renders (L4, **functional stage**).

@@ -1,6 +1,6 @@
 import { applyAction, getGame } from '@game-hub/ui-kit';
 import type { GamePayload } from '@game-hub/kernel/client';
-import type { Action, LabyrinthView } from '../engine';
+import type { Action, LabyrinthView } from '../engine/index.js';
 
 /**
  * The board's REST calls, with the view type pinned once so nothing downstream sees an `unknown`.
@@ -15,7 +15,7 @@ import type { Action, LabyrinthView } from '../engine';
  * and the client's own to its top card (pg. 2). Re-exported from here so the board names one type, and so
  * reaching for the un-redacted state type is a visible mistake rather than a convenient shortcut.
  */
-export type { LabyrinthView } from '../engine';
+export type { LabyrinthView } from '../engine/index.js';
 
 /** The game type id this client speaks. Matches the backend module's `id` and the row's `game_type`. */
 export const GAME_TYPE = 'labyrinth';

@@ -1,5 +1,5 @@
-import { DIRECTIONS } from '../core';
-import type { Direction, Position, Rotation, TileShape } from '../core';
+import { DIRECTIONS } from '../core/index.js';
+import type { Direction, Position, Rotation, TileShape } from '../core/index.js';
 
 /**
  * Each shape's openings in its **canonical (rotation 0) form**, chosen to match the shape's own name so

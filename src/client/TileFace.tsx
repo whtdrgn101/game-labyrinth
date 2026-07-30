@@ -1,6 +1,6 @@
-import { openings } from '../engine';
-import type { Direction, PlayerColor, Tile } from '../engine';
-import { TreasureMark } from './treasures';
+import { openings } from '../engine/index.js';
+import type { Direction, PlayerColor, Tile } from '../engine/index.js';
+import { TreasureMark } from './treasures.js';
 
 /**
  * One maze tile, drawn from its `shape` + `rotation` alone — the functional stage of the Labyrinth board.

@@ -1,4 +1,4 @@
-import type { Direction, PlayerColor, Position, Rotation, SlideLine } from './types';
+import type { Direction, PlayerColor, Position, Rotation, SlideLine } from './types.js';
 
 /** 2 to 4 players (pg. 1 header, "2 to 4 Players"). */
 export const MIN_PLAYERS = 2;

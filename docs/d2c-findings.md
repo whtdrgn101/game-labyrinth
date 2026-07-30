@@ -29,6 +29,17 @@ to test `./module` from out here) stops being theoretical: the substitute built 
 update, and it found two real bugs before any host could have. Three new findings, §16–§18, and finding 12 is
 now resolved by an owner ruling.
 
+**Re-verified at D2d (2026-07-30) — and this is the slice that closed the file's biggest unknowns.** The
+package became installable (a real `dist/`, `publishConfig`, a `pack:smoke` that drives it outside this repo
+under plain `node`) and the hub consumed it. Same four gates clean, `pnpm test` = **352 tests,
+`src/engine/**` still at 100%/100%/100%/100%**. Resolutions are marked ✅ **in place** below —
+§11 (the `@source` glob), §16 (the colour channel) and half of §21. Two brand-new host-side findings came out
+of it and are logged in the **hub's** `docs/track-d-externalize-games.md` ("Delivered in D2d") because they
+are the host's to own, not a game author's: Vite's dev-server pre-bundling forks the shared `@game-hub/ui-kit`
+into a second copy (breaking `configureTransport`'s injected base URL, silently), and pnpm 10+ resolves an
+external package's peers on `@game-hub/*` from the **registry** rather than the workspace unless
+`linkWorkspacePackages` is on.
+
 **Verdict up front:** the four-subpath package shape works out-of-repo essentially as documented. Nothing
 was blocked; nothing needed a workaround that changes the game's design. What's missing is all
 **scaffolding-and-proof** infrastructure: an external author hand-copies four config files that the hub's
@@ -210,16 +221,30 @@ the suite: gate passes, no warning.)
 
 ## D. Deferred to later slices — open questions I could not answer from here
 
-### 11. Tailwind: the recipe's answer is unverifiable without a host (L4 / D2d)
+### 11. Tailwind: the recipe's answer is unverifiable without a host (L4 / D2d) — ✅ RESOLVED at D2d
 
 D2b's measured answer — ship utility classes in source, **no CSS**, and let the host add
-`@source '../node_modules/@game-hub'` — is what this package will follow, and `src/client/index.ts` carries a
-⚠️ note saying so. Two things I cannot check from out here, both for D2d:
+`@source '../node_modules/@game-hub'` — is what this package follows, and `src/client/index.ts` carries a
+⚠️ note saying so. Two things I could not check from out here, both left for D2d:
 
 - **Does the host's glob actually reach the installed _game_ package**, not just the ui-kit? It should — the
   glob names the whole `@game-hub` scope directory — but that depends on the game landing at
-  `ui/node_modules/@game-hub/game-labyrinth` under pnpm's hoisting, which nobody has observed yet.
+  `ui/node_modules/@game-hub/game-labyrinth` under pnpm's hoisting, which nobody had observed.
 - **The nested-duplicate hole in finding 2**, which peer deps avoid but don't structurally prevent.
+
+> ✅ **Both answered at D2d, measured against the hub's production build.**
+>
+> The glob works **unchanged**. pnpm puts the package at `ui/node_modules/@game-hub/game-labyrinth` as a
+> symlink into the store; Tailwind v4 follows it and scans the compiled `.js` in `dist/`. Three utilities
+> that appear nowhere in the hub's own sources — `max-w-[34rem]`, `lg:max-w-[20rem]` and
+> `outline-offset-[-3px]`, all from `Board.tsx` — are present in the stylesheet the container serves, and
+> the board's maze computes to `display: grid` in a browser driven against that container. **No host-side
+> glob change was needed**, which is the answer the recipe was betting on.
+>
+> The duplicate hole is real, but it bit in a different place than expected: not Tailwind, and not through
+> the dependency graph — through **Vite's dev-server dependency pre-bundling**, which inlined a second copy
+> of `@game-hub/ui-kit` into this package's pre-bundle. Full write-up hub-side; the host fix is
+> `optimizeDeps.exclude`. Nothing a game author can do about it, which is why it is the host's finding.
 
 ### 12. Pawn colour is rules data here, and the platform treats colour as cosmetic ⚠️ needs a host decision
 
@@ -301,7 +326,17 @@ thousand-turn playthrough is a slow, flaky thing to put behind a coverage gate, 
 
 ## E. Found at L3 (the module seam)
 
-### 16. `createGame` has no colour channel, so a lobby pick can't reach the rules ⚠️ needs a kernel minor
+### 16. `createGame` has no colour channel, so a lobby pick can't reach the rules — ✅ RESOLVED (kernel 1.2.0)
+
+> ✅ **Shipped.** The platform took the suggestion below verbatim in `@game-hub/kernel@1.2.0` (contract still
+> 1, additive): `GameModule.createGame`'s players element gained `color?: string`, and the backend resolves
+> every seat's colour *before* dealing — from the same source `colorsFor` reads, so the shell's seat tint and
+> the board's home corner can never disagree. At D2d this package retired the workaround entirely:
+> `NewGameOptions` is now `Parameters<GameModule['createGame']>[0]` (derived, so it cannot drift), the module
+> member is called with **no cast**, and `newLabyrinthGame` is no longer a bypass — just a test-facing helper.
+> Proven on the wire: creating a game with `{ name: 'Ann', color: 'yellow' }` against the hub's container puts
+> Ann's pawn on the yellow corner. **The original finding follows, unedited.**
+
 
 Finding 12's resolution (owner ruling 6) makes a pawn colour **rules data** in Labyrinth: the colour you pick
 is the corner you start on and must return to. The engine now takes it — `createGame({ players: [{ name,
@@ -416,6 +451,15 @@ module (§6's update). L4 needed one for the client, and this is the shape of it
 > platform's non-negotiables exist to prevent.
 
 ### 21. `@game-hub/ui-kit` depends on ~16 CSS variables it neither ships nor documents ⚠️ worth fixing hub-side
+
+> **D2d update — half resolved, half still open.** The `@source` half is settled (see §11: the glob reaches
+> an installed package's `dist/`, verified in the hub's built stylesheet). The **token** half stands: the hub
+> defines them in `ui/src/index.css`, so Labyrinth's chrome renders correctly there — measured in a browser
+> against the container, where the "your turn" banner has a real tinted background rather than being
+> transparent. But nothing *made* the hub do that, and the ui-kit still ships neither a `tokens.css` nor a
+> documented list, so the next external host degrades exactly as described below. The suggestion at the end
+> is unchanged.
+
 
 §11 asked whether the host's `@source` glob really reaches an installed game package. Building a throwaway
 Vite + Tailwind v4 harness to render this board answered that **and** turned up something bigger.

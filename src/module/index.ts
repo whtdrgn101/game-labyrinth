@@ -1,12 +1,11 @@
 import { KERNEL_CONTRACT_VERSION } from '@game-hub/kernel';
 import type { GameSummary } from '@game-hub/kernel';
-import { applyAction, legalActions, MAX_PLAYERS, MIN_PLAYERS, SEAT_COLORS, viewFor } from '../engine';
-import type { Action, LabyrinthState, Viewer } from '../engine';
-import type { GameModule } from './context';
-import { newLabyrinthGame } from './createGame';
-import type { NewGameOptions } from './createGame';
-import { mapLabyrinthError } from './errors';
-import { parseLabyrinthAction } from './parseAction';
+import { applyAction, legalActions, MAX_PLAYERS, MIN_PLAYERS, SEAT_COLORS, viewFor } from '../engine/index.js';
+import type { Action, LabyrinthState, Viewer } from '../engine/index.js';
+import type { GameModule } from './context.js';
+import { newLabyrinthGame } from './createGame.js';
+import { mapLabyrinthError } from './errors.js';
+import { parseLabyrinthAction } from './parseAction.js';
 
 /**
  * The game's static identity — the fields the host's registry validates, split out because both the module
@@ -20,8 +19,9 @@ import { parseLabyrinthAction } from './parseAction';
  * pawn colours, each of which names the corner its holder starts on and must return to (pg. 1 Set Up,
  * pg. 2 Ending the Game). They are `SEAT_COLORS` verbatim, in clockwise corner order, so the platform's
  * palette-order default (seat *i* → `colors[i]`) reproduces the engine's own default assignment exactly.
- * ⚠️ A pick that *isn't* the default only reaches the rules once the kernel carries colours into
- * `createGame` — `docs/d2c-findings.md` §16, and the reason `./createGame.ts` already accepts them.
+ * A pick that *isn't* the default reaches the rules too: kernel 1.2.0 hands each seat's **resolved**
+ * colour to `createGame` (`docs/d2c-findings.md` §16 — raised here at L3, shipped by the platform), so the
+ * shell's seat tint and the board's home corner can no longer disagree.
  */
 export const LABYRINTH_INFO = {
   id: 'labyrinth',
@@ -56,12 +56,10 @@ export const labyrinthModule: GameModule<LabyrinthState, Action> = {
   // `id`/`name`/seat bounds/`colors`/`kernelContract`, from the one declaration above.
   ...LABYRINTH_INFO,
 
-  // Typed **wider** than the contract's `{ name }[]`: the implementation accepts each seat's chosen pawn
-  // (pg. 1 Set Up — the colour is the corner), and a `{ name }` is a `{ name, color? }`, so it is still
-  // assignable to `GameModule.createGame`. ⚠️ Callers reading `labyrinthModule.createGame` see the *kernel's*
-  // narrower signature, so a host with picks to pass must call the barrel's `newLabyrinthGame` until the
-  // contract carries colours itself (`docs/d2c-findings.md` §16). The wiring behind it is already done.
-  createGame: (opts: NewGameOptions) => newLabyrinthGame(opts),
+  // `opts` is the contract's own parameter (kernel 1.2.0), so each seat's **resolved** colour arrives here
+  // and the pawn starts on the corner the player picked (pg. 1 Set Up — the colour is the corner). No cast,
+  // no widening, no barrel bypass: the L3 escape hatch is gone (`docs/d2c-findings.md` §16).
+  createGame: (opts) => newLabyrinthGame(opts),
 
   applyAction: (state, playerId, action) => applyAction(state, playerId, action),
 
@@ -98,15 +96,18 @@ export const labyrinthModule: GameModule<LabyrinthState, Action> = {
 };
 
 // The bound host types, re-exported so a consumer of this subpath can name what it is implementing against.
-export type { GameModule, ModuleContext } from './context';
+export type { GameModule, ModuleContext } from './context.js';
 
 // Re-exported for the host's own test suites: a package exposes only its four barrels (no deep imports),
 // so anything a backend test needs to unit-test directly has to come out through here — the precedent is
 // Saint Petersburg's `mapStPetersburgError`.
-export { mapLabyrinthError } from './errors';
-export { parseLabyrinthAction } from './parseAction';
-export { newLabyrinthGame } from './createGame';
-export type { NewGameOptions } from './createGame';
+// (`newLabyrinthGame` is no longer a *bypass* — since kernel 1.2.0 it is exactly what
+// `labyrinthModule.createGame` calls, with the contract's own parameter type. It stays exported only so a
+// host test can open a game without going through the registry.)
+export { mapLabyrinthError } from './errors.js';
+export { parseLabyrinthAction } from './parseAction.js';
+export { newLabyrinthGame } from './createGame.js';
+export type { NewGameOptions } from './createGame.js';
 
 // The package-contract entry point (Track D / D0): a host's generated registry imports each game's module
 // as a default. The named export stays for callers that reference `labyrinthModule` directly.

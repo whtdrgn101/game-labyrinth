@@ -1,5 +1,5 @@
-import { ROTATIONS } from '../core';
-import type { Rotation } from '../core';
+import { ROTATIONS } from '../core/index.js';
+import type { Rotation } from '../core/index.js';
 
 /**
  * Fisher–Yates on the injected `rng`, returning a new array (never mutating the input, so the engine stays

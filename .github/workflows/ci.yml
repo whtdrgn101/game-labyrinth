@@ -54,3 +54,15 @@ jobs:
         env:
           VITEST_MAX_FORKS: '1'
           VITEST_MAX_THREADS: '1' # same cap if a config ever opts into the threads pool
+
+      # The publish artefact (D2d) — the only check in this job that runs against `dist/` rather than TS
+      # source. It packs the tarball, installs it **plus its declared peers from the public registry**
+      # into a throwaway project outside this repo, drives a real game through all four subpaths under
+      # plain `node`, and typechecks a consumer against the shipped `.d.ts` under `nodenext` resolution.
+      #
+      # It catches the one failure this repo cannot otherwise see: `tsc` emits relative specifiers
+      # verbatim, so an extensionless `from '../engine'` yields a tarball that throws
+      # `ERR_MODULE_NOT_FOUND` on first import while every step above is green. Last, because it is the
+      # slowest (a build, a pack and two installs) and a failure here only means something once the
+      # source itself is known good.
+      - run: pnpm pack:smoke

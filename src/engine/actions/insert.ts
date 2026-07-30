@@ -1,6 +1,6 @@
-import { BOARD_SIZE, GameError, ROTATIONS } from '../core';
-import type { Insertion, LabyrinthPlayer, LabyrinthState, Rotation, Tile } from '../core';
-import { isInsertionPoint, isLegalInsertion, linePath, record, samePosition, tileAt } from '../internal';
+import { BOARD_SIZE, GameError, ROTATIONS } from '../core/index.js';
+import type { Insertion, LabyrinthPlayer, LabyrinthState, Rotation, Tile } from '../core/index.js';
+import { isInsertionPoint, isLegalInsertion, linePath, record, samePosition, tileAt } from '../internal/index.js';
 
 /**
  * Move the maze — the first, **mandatory** half of a turn (pg. 2, "1. Moving the Maze"; "Important: You

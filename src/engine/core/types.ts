@@ -1,10 +1,10 @@
 import type { MoveRecord, WinnersEndState } from '@game-hub/kernel';
-import type { TreasureName } from './treasures';
+import type { TreasureName } from './treasures.js';
 
 // The append-only move-log entry is a kernel primitive shared by every Game Hub game; re-exported here
 // so Labyrinth's own modules import it from `../core` alongside the rest of the domain types.
 export type { MoveRecord } from '@game-hub/kernel';
-export type { TreasureName } from './treasures';
+export type { TreasureName } from './treasures.js';
 
 /**
  * The three path-tile shapes (rulebook pg. 1 illustration; the pg. 2 board photos show them in play).

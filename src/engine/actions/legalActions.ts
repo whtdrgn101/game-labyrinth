@@ -1,7 +1,7 @@
-import { ROTATIONS } from '../core';
-import type { LabyrinthState } from '../core';
-import { legalInsertions, reachableFrom } from '../internal';
-import type { Action } from './action';
+import { ROTATIONS } from '../core/index.js';
+import type { LabyrinthState } from '../core/index.js';
+import { legalInsertions, reachableFrom } from '../internal/index.js';
+import type { Action } from './action.js';
 
 /**
  * Every action the given seat may legally take right now — the UI's affordances and the bot's candidate

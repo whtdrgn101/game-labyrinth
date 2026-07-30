@@ -16,12 +16,13 @@ not available. Two platform packages, from the registry, are the entire coupling
 
 | Package             | Version   | Why                                                                    |
 | ------------------- | --------- | ---------------------------------------------------------------------- |
-| `@game-hub/kernel`  | `^1.1.0`  | contracts + primitives (`GameError`, `record`, `makeSeating`, `Viewer`) |
+| `@game-hub/kernel`  | `^1.2.0`  | contracts + primitives (`GameError`, `record`, `makeSeating`, `Viewer`) |
 | `@game-hub/ui-kit`  | `^1.0.0`  | the shared board chrome + the game-facing REST helpers (`./client`)     |
 
 Both are **peer** dependencies (the host provides one copy) and **dev** dependencies (so this repo builds and
-tests standalone). Never add a dependency on the hub's backend or UI packages — that's an unpublishable
-package.
+tests standalone). The ui-kit and `react` are marked **optional** peers: only `./client` needs them, and a
+backend host that installs this game for `./module` alone must not be told it owes React. Never add a
+dependency on the hub's backend or UI packages — that's an unpublishable package.
 
 ⚠️ **The kernel's major version _is_ the host↔game contract version.** `./module` declares
 `kernelContract: KERNEL_CONTRACT_VERSION` imported from the kernel it compiled against — **never a literal**,
@@ -61,8 +62,17 @@ so a game that ends up resolving a different kernel copy is caught at registrati
   hub games. What a player may see is as much a rule as what they may do, it belongs under the 100% gate, and
   `./client`/`./bot` must be able to name the projection type without importing `./module`. The module just
   delegates. ⚠️ Build a view **field by field**; never spread the state into one.
-- Import siblings by direct path (`./geometry`), cross-folder via the barrel (`../core`), the kernel by
-  package specifier (`@game-hub/kernel`). Under `tests/`, reach the engine as `../`.
+- Import siblings by direct path (`./geometry.js`), cross-folder via the barrel (`../core/index.js`), the
+  kernel by package specifier (`@game-hub/kernel`). Under `tests/`, reach the engine as `../`.
+- ⚠️ **Relative imports in shipped sources carry an explicit `.js` extension** — `'./geometry.js'`,
+  `'../core/index.js'`, and `import('./Board.js')` — including the folder barrels, which need the
+  `/index.js` spelled out. This is the platform's D2a lesson, re-learned here at D2d: `tsc` emits relative
+  specifiers **verbatim**, and Node ESM does neither extension nor directory resolution, so an
+  extensionless `from '../engine'` produces a tarball that throws `ERR_MODULE_NOT_FOUND` on a host's first
+  import while every check in this repo is green. A `.js` specifier resolves to the `.ts`/`.tsx` source
+  in-workspace (TS, Vite and Vitest all do the mapping) *and* to the emitted `.js` in `dist/`, so one
+  spelling serves both. Files under `tests/` are excluded from the build and keep the extensionless style.
+  `pnpm pack:smoke` is what catches a regression — do not "tidy" the extensions away.
 - One mechanic = one file in the relevant folder + one matching test file. Reuse `internal/` helpers.
 - The end state is the kernel's union — this game takes `WinnersEndState` (a winner, nothing to tabulate).
   Narrow on `status` before reading `winnerIds`.
@@ -76,7 +86,14 @@ so a game that ends up resolving a different kernel copy is caught at registrati
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
+pnpm pack:smoke   # slower; run it whenever you touch imports, exports, package.json or the build
 ```
+
+`pack:smoke` is the only check that runs against **`dist/`** rather than TS source: it packs the tarball,
+installs it plus its declared peers **from the public registry** into a throwaway project outside this
+repo, plays a game through all four subpaths under plain `node`, and typechecks a consumer against the
+shipped `.d.ts` under `nodenext` resolution. Everything else here would stay green while the published
+package was unusable.
 
 - **Verify, don't infer.** Green tests are not evidence a feature works — drive the real thing where one
   exists. If you didn't verify it, say so plainly.

@@ -12,11 +12,11 @@ importers:
         specifier: ^9.39.5
         version: 9.39.5
       '@game-hub/kernel':
-        specifier: ^1.1.0
-        version: 1.1.0(@types/react@19.2.17)
+        specifier: ^1.2.0
+        version: 1.2.0(@types/react@19.2.17)
       '@game-hub/ui-kit':
         specifier: ^1.0.0
-        version: 1.0.0(@game-hub/kernel@1.1.0(@types/react@19.2.17))(react@19.2.8)
+        version: 1.0.0(@game-hub/kernel@1.2.0(@types/react@19.2.17))(react@19.2.8)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -355,8 +355,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@game-hub/kernel@1.1.0':
-    resolution: {integrity: sha512-WPYOuOy3ELYjYJG/75ekmnr3TXBA4aSOk+2ZUcPvYMm7t5dV4ZH+cC276F1YNSsUTUxnBFFaJ6YJCuyWVjADzQ==}
+  '@game-hub/kernel@1.2.0':
+    resolution: {integrity: sha512-6pgYkNTMTJuxc5pwZyU0UoWTRkxr6+6S7e9Q4OzNnvL4oehx8OCQwrmfJyWayzn11+EJG65Q12SaPkHihBeQGA==}
     peerDependencies:
       '@types/react': ^19.0.0
     peerDependenciesMeta:
@@ -2173,13 +2173,13 @@ snapshots:
 
   '@exodus/bytes@1.15.1': {}
 
-  '@game-hub/kernel@1.1.0(@types/react@19.2.17)':
+  '@game-hub/kernel@1.2.0(@types/react@19.2.17)':
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@game-hub/ui-kit@1.0.0(@game-hub/kernel@1.1.0(@types/react@19.2.17))(react@19.2.8)':
+  '@game-hub/ui-kit@1.0.0(@game-hub/kernel@1.2.0(@types/react@19.2.17))(react@19.2.8)':
     dependencies:
-      '@game-hub/kernel': 1.1.0(@types/react@19.2.17)
+      '@game-hub/kernel': 1.2.0(@types/react@19.2.17)
       class-variance-authority: 0.7.1
       clsx: 2.1.1
       lucide-react: 0.469.0(react@19.2.8)

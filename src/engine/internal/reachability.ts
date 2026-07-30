@@ -1,7 +1,7 @@
-import { BOARD_SIZE, DIRECTIONS } from '../core';
-import type { Board, Direction, Position } from '../core';
-import { tileAt } from './board';
-import { neighbor, openings, opposite, samePosition } from './geometry';
+import { BOARD_SIZE, DIRECTIONS } from '../core/index.js';
+import type { Board, Direction, Position } from '../core/index.js';
+import { tileAt } from './board.js';
+import { neighbor, openings, opposite, samePosition } from './geometry.js';
 
 /**
  * Whether `position` names a real square of the 7×7 board. Integer-checked as well as bounded, because

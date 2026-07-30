@@ -1,4 +1,4 @@
-import type { MoveRecord } from '../engine';
+import type { MoveRecord } from '../engine/index.js';
 
 /**
  * Labyrinth's move log in plain English — the game-specific half of the ui-kit's shared `ActivityFeed`.

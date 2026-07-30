@@ -1,5 +1,5 @@
 import type { SeatedView } from '@game-hub/kernel/bot';
-import type { LabyrinthPlayerView } from '../engine';
+import type { LabyrinthPlayerView } from '../engine/index.js';
 
 /**
  * `@game-hub/game-labyrinth/bot` — the AI.

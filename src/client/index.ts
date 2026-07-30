@@ -1,8 +1,8 @@
 import { lazy } from 'react';
-import type { LabyrinthView } from '../engine';
-import type { GameClient } from './types';
-import { GAME_TYPE } from './api';
-import { LabyrinthStatus } from './Status';
+import type { LabyrinthView } from '../engine/index.js';
+import type { GameClient } from './types.js';
+import { GAME_TYPE } from './api.js';
+import { LabyrinthStatus } from './Status.js';
 
 /**
  * `@game-hub/game-labyrinth/client` — the UI seam (L4).
@@ -38,7 +38,7 @@ export const labyrinthClient: GameClient<LabyrinthView> = {
     'Then walk as far as you like along connected corridors, or stay put. Stop on your treasure to turn its card face up.',
     'Flip every card and get your pawn home to your own colour’s corner to win.',
   ],
-  Board: lazy(() => import('./Board')),
+  Board: lazy(() => import('./Board.js')),
   Status: LabyrinthStatus,
 };
 
@@ -47,8 +47,8 @@ export const labyrinthClient: GameClient<LabyrinthView> = {
 export default labyrinthClient;
 
 // The settled bindings, re-exported so a host (and this package's own tests) can name what they are holding.
-export type { BoardProps, GameClient } from './types';
-export { act, fetchGame, GAME_TYPE, sendAction } from './api';
-export type { LabyrinthPayload, LabyrinthView } from './api';
-export { describeMoveRecord } from './describe';
-export { LabyrinthStatus } from './Status';
+export type { BoardProps, GameClient } from './types.js';
+export { act, fetchGame, GAME_TYPE, sendAction } from './api.js';
+export type { LabyrinthPayload, LabyrinthView } from './api.js';
+export { describeMoveRecord } from './describe.js';
+export { LabyrinthStatus } from './Status.js';

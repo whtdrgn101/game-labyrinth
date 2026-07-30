@@ -1,4 +1,4 @@
-import type { Insertion, Position, Rotation } from '../core';
+import type { Insertion, Position, Rotation } from '../core/index.js';
 
 /**
  * Everything a player can do in a Labyrinth turn. `applyAction` is the turn-aware entry point.
