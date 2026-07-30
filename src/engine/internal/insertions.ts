@@ -73,18 +73,30 @@ export function reverseOf(lastPush: Insertion | null): Insertion | null {
 }
 
 /**
+ * Everything the no-reverse rule reads: the push just made, and nothing else.
+ *
+ * Typed as this narrow slice rather than as a whole `LabyrinthState` **so the board can ask** — a client
+ * is only ever handed a `LabyrinthView` (L3), which is not a state, and the alternative was for the UI to
+ * re-derive pg. 2's exception from `lastPush` itself. A rule with two implementations is the one thing
+ * neither the module nor the client may hold, so the rule's own signature widened to the fields it
+ * actually reads. A `LabyrinthState` and a `LabyrinthView` both satisfy it structurally, and no caller
+ * changed. See `docs/d2c-findings.md` §19.
+ */
+export type PushHistory = Pick<LabyrinthState, 'lastPush'>;
+
+/**
  * The arrows the active player may use right now: all 12 on the first turn (nothing has been pushed out
  * yet), and 11 thereafter — every arrow except the one that would shove the extra tile straight back
  * where it came from (pg. 2). The single source of that rule, so the UI's arrow affordances and the bot's
  * candidate list can never drift from what `insert` will accept.
  */
-export function legalInsertions(state: LabyrinthState): readonly Insertion[] {
+export function legalInsertions(state: PushHistory): readonly Insertion[] {
   const banned = reverseOf(state.lastPush);
   return banned === null ? INSERTIONS : INSERTIONS.filter((arrow) => !sameInsertion(arrow, banned));
 }
 
 /** Whether this exact insertion is legal in this state: a real arrow, and not the forbidden reverse. */
-export function isLegalInsertion(state: LabyrinthState, candidate: Insertion): boolean {
+export function isLegalInsertion(state: PushHistory, candidate: Insertion): boolean {
   if (!isInsertionPoint(candidate)) return false;
   return legalInsertions(state).some((arrow) => sameInsertion(arrow, candidate));
 }

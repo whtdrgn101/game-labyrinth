@@ -59,6 +59,10 @@ export { isFixedPosition, neighbor, openings, opposite, rotateDirection, samePos
 // draws its arrows from `legalInsertions`; the bot enumerates from the same list. Nothing re-derives the
 // no-reverse rule (pg. 2, "The only exception").
 export { INSERTIONS, entrySquare, exitSquare, isLegalInsertion, legalInsertions, linePath } from './internal';
+// ⚠️ Both take only the **push history** (`{ lastPush }`), never a whole state — so the board, which holds a
+// redacted `LabyrinthView` and not a `LabyrinthState`, can ask the engine which arrows are live rather than
+// re-implement pg. 2's exception in the UI (L4; `docs/d2c-findings.md` §19).
+export type { PushHistory } from './internal';
 
 // Movement (L2): the flood-fill that says where a piece may go. `reachableFrom` is what L4 highlights on
 // the board and L5 searches over; `connects` is the single definition of "two squares are joined" (both

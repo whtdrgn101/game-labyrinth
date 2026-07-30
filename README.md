@@ -30,16 +30,21 @@ lockfile resolves `@game-hub/*` to registry tarballs with integrity hashes, and 
 
 ## Status
 
-**L3 shipped — the engine plays a complete game, and the backend seam is real.** L0 laid the data spine
-(rules types, tile/treasure data, the fixed board transcribed from the rulebook's board photo, and
-`createGame` with an injected-rng shuffle, orientations and deal); L1 added the slide (the 12 arrows, the
-no-reverse rule, pawns carried along a pushed line and wrapped round the edge); L2 added the other half of a
-turn — flood-fill reachability, the pawn move, the treasure flip, the turn hand-off and the immediate win;
-L3 added `./module` — the real `GameModule`, a shape-only `parseAction`, the error→HTTP map, and `viewFor`,
-the projection that redacts each player's face-down stack **from its own owner** down to the top card he is
-allowed to look at (pg. 2). Choosing your pawn now chooses your corner, as the rulebook says it does.
-295 tests, 100% engine coverage. `./client` and `./bot` are still honest typed placeholders: the bindings
-that are settled, and no fabricated behaviour. The slice plan, the rules digest and every ruling live in
+**L4 (functional stage) shipped — the game is playable.** L0 laid the data spine (rules types, tile/treasure
+data, the fixed board transcribed from the rulebook's board photo, and `createGame` with an injected-rng
+shuffle, orientations and deal); L1 added the slide (the 12 arrows, the no-reverse rule, pawns carried along a
+pushed line and wrapped round the edge); L2 added the other half of a turn — flood-fill reachability, the pawn
+move, the treasure flip, the turn hand-off and the immediate win; L3 added `./module` — the real `GameModule`,
+a shape-only `parseAction`, the error→HTTP map, and `viewFor`, the projection that redacts each player's
+face-down stack **from its own owner** down to the top card he is allowed to look at (pg. 2); L4 added
+`./client` — a board you can actually play: the maze drawn from the engine's own connectivity, the 12 arrows
+with the banned one visibly dead and saying why, the extra tile with a rotation control, the flood-fill
+highlighted and clickable, "stay put" as a real button, and the move log in plain English.
+
+**The board is the *functional* stage, not the art.** Tiles, treasures and pawns are shapes and CSS — legible,
+responsive down to 320px, and structured so that **L4b**, a comps-first pass with original illustration,
+replaces the picture without touching the board's structure. `./bot` is still an honest typed placeholder
+(L5). 352 tests, 100% engine coverage. The slice plan, the rules digest and every ruling live in
 **[`ROADMAP.md`](./ROADMAP.md)**.
 
 ## Layout
@@ -51,7 +56,11 @@ src/
     internal/   shared helpers (geometry, setup randomness, the kernel record()/seating bindings)
     tests/      one file per concern
   module/     the backend seam — the GameModule: createGame wiring, parseAction, the error map, summarize
-  client/     the UI seam — the contract/DTO bindings + the typed REST calls (the board at L4)
+  client/     the UI seam — the GameClient + the board
+    Board.tsx     the 7×7 maze, the 12 arrows, the extra tile, the panels
+    TileFace.tsx  one tile, drawn from the engine's own openings()   ← L4b replaces the picture here
+    treasures.tsx a generated visual identity for the 24 treasures   ← and here
+    describe.ts   the move log in plain English, from the payloads alone
   bot/        the AI (L5). 90% coverage gate, enabled with it.
 docs/
   d2c-findings.md   what building out-of-repo actually cost
@@ -77,7 +86,9 @@ monorepo.
 
 The rulebook PDF is **not** in this repository — it is copyrighted, so it stays local (gitignored) and the
 code cites page numbers instead. Mechanics and a list of treasure names aren't copyrightable; the
-_illustrations_ are, so every asset here is drawn fresh in the house style (L4) and nothing is traced.
+_illustrations_ are, so every asset here is drawn fresh in the house style and nothing is traced. The L4 board
+draws its tiles and treasure marks from geometry and a generated palette; L4b replaces them with original
+artwork.
 
 ## Licence
 

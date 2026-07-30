@@ -367,3 +367,96 @@ refuses to accept back.** The pure geometry helpers that take a `board` (`reacha
 > needs its game's engine to expose board-level mechanics (not just state-level ones), since the view it is
 > handed is not a state. The alternative — letting bots hold real state — would quietly delete the guarantee
 > that a bot can't cheat, and should not be the answer.
+
+---
+
+## F. Found at L4 (the client — the board)
+
+### 19. The view can't be handed to the rules that decide affordances — §18, one layer up
+
+§18 recorded that a **bot** can't feed `viewFor`'s output back into the engine. L4 hit the same wall from the
+other side: a **board** holds a `LabyrinthView` and needs to know which of the 12 arrows are live, and the
+function that knows — `legalInsertions` — took a whole `LabyrinthState`. So the board's only options were to
+re-implement pg. 2's "only exception" in the UI (a rule with two implementations, the thing a client may
+never hold) or to change the engine.
+
+**Fixed in this repo, in the engine, in the smallest possible way:** `legalInsertions`/`isLegalInsertion` now
+take `PushHistory = Pick<LabyrinthState, 'lastPush'>` — the fields they were already the only readers of. A
+state satisfies it, a view satisfies it, no caller changed, coverage did not move. The rule stayed in one
+place, which was the point.
+
+> **The general lesson, and it is a platform one:** a game's public surface has *three* audiences with three
+> different objects — the module (a state), the bot (a view), the client (a view) — and the hub's five games
+> never noticed because none of their boards asks the engine anything; they all read a flat field off the view
+> and decide in the UI. Labyrinth's board asks four questions (`reachableFrom`, `legalInsertions`, `openings`,
+> `START_CORNERS`) and three of the four were already view-safe by accident, because they take a `board`.
+> **A rules function that a UI will need should be typed against the narrowest slice it reads, not against the
+> state**, and `game-creation.md` §4 is where that belongs. It costs nothing and it is the difference between
+> the UI asking and the UI guessing.
+
+### 20. There is no way to test a `./client` out of the monorepo either — and the stack is not small ⚠️
+
+Finding 6 said there is no way to test `./module` or `./client` from out here. L3 built a substitute for the
+module (§6's update). L4 needed one for the client, and this is the shape of it:
+
+- **The whole React DOM test stack is the game's problem.** The hub's games are tested by `ui/`'s Playwright
+  suite and inherit its browser; a package outside the workspace has none, so this repo added `react-dom`,
+  `jsdom`, `@testing-library/react` and `@testing-library/dom` as devDependencies (~53 packages) to render its
+  own board at all. That is a reasonable cost, but it is **not in `game-creation.md`**, which describes a
+  game's `./client` without mentioning that testing one requires a DOM the recipe never installs.
+- **`react-dom` is a devDependency and deliberately not a peer.** The package itself never imports it (JSX
+  needs only `react/jsx-runtime`); only the tests do. A host brings its own.
+- **One line per test file, not a config change.** Vitest 3 deprecated `environmentMatchGlobs`, and a second
+  test *project* would have duplicated this repo's per-glob coverage gates — the one thing not worth risking.
+  A `// @vitest-environment jsdom` docblock in each client test file does the whole job and leaves
+  `vitest.config.ts`'s thresholds untouched.
+
+> **Hub-side suggestion:** `game-creation.md` §4 should name the four devDependencies and the docblock. It is
+> five lines, and without them an external author's first board is untested — which is exactly the failure the
+> platform's non-negotiables exist to prevent.
+
+### 21. `@game-hub/ui-kit` depends on ~16 CSS variables it neither ships nor documents ⚠️ worth fixing hub-side
+
+§11 asked whether the host's `@source` glob really reaches an installed game package. Building a throwaway
+Vite + Tailwind v4 harness to render this board answered that **and** turned up something bigger.
+
+**Verified:** an **absolute** `@source '/abs/path/to/game/src/client'` works in Tailwind v4, and the utilities
+in an out-of-tree package are generated correctly from it. So the mechanism §11 doubted is sound.
+
+**But `@source` is only half of what a host owes.** Every ui-kit component — and therefore every game's chrome
+— is written in *semantic* utilities: `bg-card`, `text-muted-foreground`, `border`, `bg-primary/10`,
+`text-destructive`, `bg-muted`, `variant="secondary"`. Those resolve through `--color-card`,
+`--color-muted-foreground`, `--color-border`, `--color-primary`, … — **sixteen custom properties that the
+published tarball does not contain and its README does not list**, plus the `.reveal-in` keyframes
+`GameOver` animates with. They live in the hub's `ui/src/index.css`, which an external host cannot read.
+
+Measured, by rendering this board twice in the harness — once with the hub's token block copied in, once
+without ([`board-desktop.png` vs `board-no-tokens.png`], scratchpad):
+
+| | with tokens | without |
+| --- | --- | --- |
+| Layout, grid, spacing | correct | **correct** — `@source` did its job |
+| The maze itself | correct | **correct** — the tile picture is inline SVG with literal fills |
+| Panels, cards, borders | card surfaces, grey secondary text | flat white, black text, invisible borders |
+| The "your turn" banner highlight | tinted + primary border | **gone** |
+| `Button variant="secondary"` ("Stay put") | filled | **no fill — reads as disabled text** |
+
+Nothing *breaks*; it degrades to something that looks like a bug in the game. That the maze survives at all is
+a design decision made in this repo, not a property of the platform: `TileFace.tsx` draws with literal fills
+precisely so a mis-wired host loses the chrome and not the board.
+
+> **Hub-side suggestion, cheapest first:** (a) ship a `tokens.css` in `@game-hub/ui-kit` with the default
+> `:root`/`.dark` blocks and the `reveal-in` keyframes, and tell hosts to `@import` it — one file, and the
+> ui-kit becomes self-sufficient; (b) failing that, **document the list** in the ui-kit README, because right
+> now the only way to discover it is to render a board against an empty stylesheet and see what vanishes.
+
+### 22. Two things that worked, unprompted, and are worth not breaking
+
+- **`ActionTip` handles a disabled child.** It listens on its own wrapper, not on the child, so Labyrinth's
+  banned arrow — which must be visibly present, dead, and able to say why (pg. 2's own hint) — can explain
+  itself on hover even though a disabled `<button>` fires no pointer events. That is not stated anywhere; it
+  is a real property of the implementation and this board depends on it.
+- **`ActivityFeed`'s split is the right one.** Rendering the actor's name and the 🤖 badge itself, and asking
+  the game only for the rest of the sentence, meant Labyrinth's `describe` is a pure function of a
+  `MoveRecord` — which is what makes it unit-testable without a DOM (16 of this slice's tests) and what keeps
+  a per-viewer secret from being reachable from inside it.

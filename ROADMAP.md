@@ -5,12 +5,18 @@ and the platform's proof that a game can be built entirely **outside** the hub m
 published `@game-hub/kernel` and `@game-hub/ui-kit`. See [`README.md`](./README.md) for the pilot story and
 [`docs/d2c-findings.md`](./docs/d2c-findings.md) for what that cost.
 
-**Status:** **L3 shipped** (2026-07-30) — the backend seam: the real `GameModule`, `viewFor`'s three-case
-redaction (your own stack cut to its top card, everyone else's to a count), a shape-only `parseAction`, the
-error→HTTP map, and the `createGame` signature change that makes **your chosen pawn colour your starting
-corner** (ruling 6, now implemented). Whole seeded games are played *through the module* — `createGame` →
-`parseAction` → `applyAction` — with every viewer's projection leak-checked after every action (evidence
-below). 295 tests, `src/engine/**` still at 100%. **Next: L4, the client (the board, comps-first).**
+**Status:** **L4 (functional stage) shipped** (2026-07-30) — the game is **playable**: a 7×7 maze drawn from
+the engine's own `openings()`, the 12 arrows with the banned one visibly dead and explaining itself, the extra
+tile with a rotation control, the flood-fill highlighted and clickable, "stay put" as a real button, per-seat
+found rows and face-down counts, the hunted card (yours only, a card back otherwise), and the move log in
+plain English. Verified in a real browser, not inferred: a throwaway Vite harness mounted the shipped
+`Board.tsx` over a real `viewFor` projection and drove a whole turn through the real `parseAction` +
+`applyAction` (evidence below). 352 tests, `src/engine/**` still at 100%. **Next: L4b, the art pass
+(comps-first), then L5, the bot.**
+
+Earlier: **L3** (2026-07-30) — the backend seam: the real `GameModule`, `viewFor`'s three-case redaction (your
+own stack cut to its top card, everyone else's to a count), a shape-only `parseAction`, the error→HTTP map,
+and the `createGame` signature change that makes **your chosen pawn colour your starting corner** (ruling 6).
 
 The authoritative rules are the rulebook PDF (`reference_materials/TheAMAZEingLabyrinth.pdf` — gitignored,
 copyrighted; page numbers are cited in comments instead). ⚠️ **Read the page before implementing a rule.**
@@ -260,6 +266,39 @@ semantically wrong" — and 409 only for turn/phase errors. L3 ships **409** for
 The split that *does* matter — payload mistakes vs. rules refusals — is kept, as 400 vs. 409, which is the
 same line the engine's error codes are already drawn along.
 
+### 14. The board asks the engine — so a rule's signature widened rather than gaining a second copy (L4)
+
+`legalInsertions(state)` took a `LabyrinthState`. A board holds a `LabyrinthView`. So the UI could either
+re-derive pg. 2's "only exception" from `lastPush` itself — a rule with two implementations, which is the one
+thing a client may never hold — or the engine could change.
+
+It changed, minimally: `legalInsertions`/`isLegalInsertion` now take
+**`PushHistory = Pick<LabyrinthState, 'lastPush'>`**, the field they were already the only readers of. A state
+satisfies it; so does a view. No caller changed, no behaviour changed, coverage did not move.
+
+- **The alternative was worse in a way that compounds.** Two copies of the no-reverse rule means the arrow you
+  can *press* and the insertion the engine will *accept* are separate facts that agree only by luck. The class
+  of bug is "the UI offered a move the server rejected", which reads to a player as the game being broken.
+- **It generalises.** A game's public surface serves three callers with three different objects — the module
+  (a state), the bot (a view), the client (a view). Typing a rules function against *the fields it reads*
+  rather than against the whole state is what makes it answerable to all three. `reachableFrom`, `connects`,
+  `linePath` and `openings` were already fine, because they take a `board`; `legalInsertions` was the only one
+  that wasn't. `docs/d2c-findings.md` §19.
+- ⚠️ **`legalActions` is deliberately left alone.** It builds `MOVE` arms from the active seat's position and
+  genuinely needs a state. The board does not call it and does not need to: `reachableFrom` gives it the same
+  set from a board.
+
+### 15. Coordinates: 0-based in testids, 1-based in everything a player reads (L4)
+
+The engine is 0-based (`{ row: 0, col: 0 }` is the red corner) and the board's `data-testid`s carry engine
+coordinates verbatim (`tile-3-5`), because they are the e2e contract at D2d and a testid that disagreed with
+the state would be a trap. But "row 0, column 0" is not how a board game is spoken at a table, and the move
+feed and the screen-reader labels are prose.
+
+So prose is **1-based**, and the conversion happens in exactly two places — `describe.ts` and the board's
+`aria-label`s — both of which say so. The alternative (0-based prose) was rejected as user-hostile; the other
+alternative (1-based testids) as a silent mismatch with every other tool that reads the state.
+
 ---
 
 ## Slice plan
@@ -293,8 +332,18 @@ gate turns on with L5.
   `kernelContract`, and the four-corner `colors`; no `routes`/`pendingStep`/`onStateChanged`/bot driver.
   Module tests stand in for the hub's module-seam suite the pilot can't run. 295 tests, `src/engine/**` at
   100%.
-- **L4 — client**: the board UI, comps-first (classic theme, original art). Findings feed the hub's RR9b
-  board revamp.
+- **L4 — client (functional stage)** ✅ (2026-07-30): the playable board. `TileFace.tsx` (a tile drawn from
+  `openings(shape, rotation)` — the engine's own connectivity, so picture and rule cannot drift);
+  `treasures.tsx` (a *generated* identity for the 24 — golden-angle hue × 4 silhouettes × a computed unique
+  monogram); `Board.tsx` (the 9×9 frame: 7×7 maze + the 12 arrows, the extra tile with a rotation control,
+  the flood-fill highlighted and clickable, "stay put" as a button, the hunted card, per-seat found rows and
+  face-down counts, all affordances gated on `canDrive`/phase/`busy`/`ended`); `describe.ts` (the feed's plain
+  English from the payloads alone); `Status.tsx`; the `GameClient` with a **lazy** board. One engine change,
+  ruling 14. 57 client tests (352 total), `src/engine/**` still at 100%.
+- **L4b — the art pass (comps-first)**: original illustration for the tiles, the 24 treasures and the pawns,
+  in the classic enchanted-labyrinth theme. Nothing about the seam or the board's structure changes — L4
+  isolated the two things art replaces (`TileFace.tsx`, `treasures.tsx`) for exactly this. Findings feed the
+  hub's RR9b board revamp.
 - **L5 — bot**: slide × rotation × move search over the redacted view, greedy baseline scored against the
   treasure (not the hop), self-play at every seat count, bench calibration; the `src/bot/**` 90% gate.
 - **L6 — polish**: the younger-children variant (pg. 2), action tooltips, an a11y pass.
@@ -446,3 +495,69 @@ What L4 should know that L3 learned:
 - **`legalActions` in the `move` phase is never empty**, so neither the module nor the board needs a
   "no legal move" branch.
 
+
+### What L4 built (for reference when extending it, and for L4b)
+
+The client is five files and one engine change. Every decision below exists because of something the board
+would otherwise have got wrong.
+
+- **`TileFace.tsx` — one tile, drawn from `openings(shape, rotation)`.** The corridor is a centre square plus
+  one arm per opening, each arm running to the very edge of the tile's box; the grid has **no gaps**
+  (measured: 0.00px between adjacent tiles). So a corridor visually continues into the next square *exactly*
+  when the two tiles face each other — which is the same fact `connects()` computes, from the same function.
+  A player reading the maze and the engine computing reachability cannot disagree.
+  - Colours are **literal inline fills**, not Tailwind classes. A game package ships classes and no CSS, so
+    the chrome depends on the host wiring Tailwind *and* defining the ui-kit's semantic tokens
+    (`docs/d2c-findings.md` §21, measured). Keeping the tile picture out of that dependency means a mis-wired
+    host loses the panels, not the board. ⚠️ **L4b must keep that property.**
+  - The 16 printed tiles are drawn in darker stone; the four corners get a **coloured frame**, not a centre
+    dot — the centre is where a pawn stands, and the corner has to stay identifiable while its owner sits on
+    it. (The first draft used a dot; the browser screenshot showed the pawn covering it completely.)
+  - Co-occupancy is drawn, not prevented: the rulebook has no occupancy rule (pg. 2), so 2–4 pawns on one
+    square spread onto a 2×2.
+- **`treasures.tsx` — a generated visual identity for the 24.** Hue stepped by the **golden angle** (not
+  360/24 = 15°, which makes deck-order neighbours indistinguishable), one of four silhouettes, and a monogram
+  computed as the shortest prefix no earlier treasure took (`skull` → `Sk`, `spider` → `Spi`). Uniqueness is
+  *computed*, so ruling 3's warning that a name may yet be corrected can't silently produce two identical
+  marks. Presentation only — no rule reads a colour or a glyph.
+- **`Board.tsx` — the 9×9 frame.** A one-cell border of arrows around the 7×7 maze, so every arrow sits at the
+  end of the line it pushes. Fluid columns, square tiles, **no fixed width**: measured 544px at desktop and
+  296px at a 320px viewport with `scrollWidth === clientWidth` (no horizontal overflow). Stone Age's `PanZoom`
+  is deliberately **not** used — it is for a large illustrated map, and wrapping 49 tap targets in a pan
+  surface turns every tap into a potential drag. ⚠️ If L4b's artwork stops being legible at 35px, *that* is
+  when to reconsider, not before.
+- **`describe.ts` — the feed's plain English, from the payloads alone.** It reads the `MoveRecord` and the
+  public seat names and **nothing else**: the feed is shown to every seat, so a line assembled from the
+  projected state would render differently per viewer and could leak. The card revealed *under* a flip is
+  absent from the payload on purpose (pg. 2) and there is a test asserting a line never mentions one.
+  Finding §14's worry — that a payload designed at L1/L2 might turn out to be insufficient three slices later
+  — did not materialise: `INSERT` and `MOVE` carried everything the sentences needed.
+- **The `GameClient`** — blurb, seven rules bullets, `Status`, and a **lazy** `Board` (asserted in the tests to
+  still be a `React.lazy`, because the failure mode of losing that is invisible).
+
+**Verified by driving it, not by inference.** A throwaway Vite + Tailwind harness (scratchpad, not checked in)
+mounted the shipped `Board.tsx` over a real `viewFor` projection, with a stub `fetch` that ran every action
+through the **real** `parseLabyrinthAction` → `applyAction`. Headless Chromium then played a turn:
+
+| step | what the DOM said |
+| ---- | ----------------- |
+| opening | 49 tiles, 12 arrows all live, 4 pawns on their four coloured corners, 24 treasures on the board, hunted card = `mouse` |
+| rotate + slide at north-3 | tile went in at 0° (spare was at 270°, rotated once) — the feed read *"pushed the extra tile in from the north along column 4 (facing 0°)"* |
+| after the slide | phase → move, **5** squares highlighted (= `reachableFrom`), all 12 arrows dead, "Stay put" live, the spare became the ejected `gnome` tile |
+| move to (3,1) | pawn relocated, turn passed to Bob, the banner and hunted card followed him, and **`arrow-south-3` alone** stayed disabled with its red cross (pg. 2's exception) |
+
+Zero console errors throughout. Screenshots at 1280px and 320px are in the scratchpad; the 320px one has no
+horizontal overflow and the monograms are still readable at a 35px tile.
+
+**What L4b (art) and D2d (host wiring) still need:**
+
+- **L4b:** original tile fills/frames, the 24 treasure illustrations and pawn shapes. Only `TileFace.tsx` and
+  `treasures.tsx` should change; `Board.tsx`'s structure, the testids and `describe.ts` are the contract. Keep
+  the "board survives without the host's CSS tokens" property.
+- **D2d:** the one thing this repo still cannot check — that the **lazy** board really code-splits once the
+  package is installed under `node_modules` (Track D §3), that the host's `@source` glob reaches the installed
+  game (the mechanism is verified, the pnpm hoisting is not), and that the host defines the ui-kit's semantic
+  tokens (`docs/d2c-findings.md` §21). The board's testids — `board`, `maze`, `tile-<row>-<col>`,
+  `arrow-<side>-<line>`, `extra-tile`, `extra-rotate-cw`/`-ccw`, `stay-put`, `hunted-card`, `seat-<id>`,
+  `seat-found-<id>`, `seat-stack-<id>`, `pawn-<id>`, `labyrinth-banner`, `labyrinth-log` — are the e2e
+  contract from here on.

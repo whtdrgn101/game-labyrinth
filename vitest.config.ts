@@ -15,10 +15,21 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    // `src/module/**` has no coverage *gate* (it is a host binding, and the hub's own backend suite is what
-    // finally exercises it), but its tests still run here — L3's redaction and payload parsing are the two
-    // places a mistake is invisible from inside the engine. See `docs/d2c-findings.md` §6.
-    include: ['src/engine/**/*.test.ts', 'src/module/**/*.test.ts', 'src/bot/**/*.test.ts'],
+    // `src/module/**` and `src/client/**` have no coverage *gate* (they are host bindings, and the hub's own
+    // backend/UI suites are what finally exercise them), but their tests still run here — L3's redaction and
+    // payload parsing, and L4's affordances, are the places a mistake is invisible from inside the engine.
+    // See `docs/d2c-findings.md` §6.
+    //
+    // ⚠️ The client tests need a **DOM**, which the engine and module tests must not pay for. Rather than a
+    // per-glob `environment` (deprecated in Vitest 3) or a second project, each client test file opts in with
+    // a `// @vitest-environment jsdom` docblock — one line, visible in the file that needs it, and it leaves
+    // this config's per-glob coverage gates untouched.
+    include: [
+      'src/engine/**/*.test.ts',
+      'src/module/**/*.test.ts',
+      'src/client/**/*.test.{ts,tsx}',
+      'src/bot/**/*.test.ts',
+    ],
     // Ported from the hub's per-game configs: the bot's future bench/self-play tests run whole seeded
     // games (CPU-bound), and CI caps vitest to one fork (`VITEST_MAX_FORKS`), so the default 5s timeout
     // starves them under contention. Headroom, not a hang-mask — a genuinely wedged test still dies.

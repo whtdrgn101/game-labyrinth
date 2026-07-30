@@ -1,6 +1,6 @@
 import { applyAction, getGame } from '@game-hub/ui-kit';
 import type { GamePayload } from '@game-hub/kernel/client';
-import type { LabyrinthView } from '../engine';
+import type { Action, LabyrinthView } from '../engine';
 
 /**
  * The board's REST calls, with the view type pinned once so nothing downstream sees an `unknown`.
@@ -16,6 +16,12 @@ import type { LabyrinthView } from '../engine';
  * reaching for the un-redacted state type is a visible mistake rather than a convenient shortcut.
  */
 export type { LabyrinthView } from '../engine';
+
+/** The game type id this client speaks. Matches the backend module's `id` and the row's `game_type`. */
+export const GAME_TYPE = 'labyrinth';
+
+/** A Labyrinth game payload, with its state pinned to the redacted view. */
+export type LabyrinthPayload = GamePayload<LabyrinthView>;
 
 /** Fetch a game's current state, projected for `viewer`'s seats. */
 export function fetchGame(gameId: string, viewer?: string): Promise<GamePayload<LabyrinthView>> {
@@ -34,4 +40,20 @@ export function sendAction(
   expectedVersion?: number,
 ): Promise<GamePayload<LabyrinthView>> {
   return applyAction<LabyrinthView>(gameId, playerId, action, viewer, expectedVersion);
+}
+
+/**
+ * The board's own send: the same call as `sendAction`, but typed to the engine's `Action` union so an
+ * `INSERT`/`MOVE` built in the UI is checked against the two shapes `parseAction` will accept (L3) rather
+ * than posted as an `unknown`. There is no Labyrinth-specific *route* — every action is a free player choice
+ * (all the randomness is spent at setup), so the opaque `/actions` endpoint is the whole surface.
+ */
+export function act(
+  gameId: string,
+  playerId: string,
+  action: Action,
+  viewer?: string,
+  expectedVersion?: number,
+): Promise<LabyrinthPayload> {
+  return sendAction(gameId, playerId, action, viewer, expectedVersion);
 }

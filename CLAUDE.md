@@ -48,9 +48,15 @@ so a game that ends up resolving a different kernel copy is caught at registrati
 
 ## Conventions
 
-- **Unit tests live in `src/<subpath>/tests/`**, not beside the source. `src/engine/**` is gated; `src/module/**`
-  is not, and is tested anyway — the module's tests are the only proof this game works with a host at all
-  (`docs/d2c-findings.md` §6).
+- **Unit tests live in `src/<subpath>/tests/`**, not beside the source. `src/engine/**` is gated;
+  `src/module/**` and `src/client/**` are not, and are tested anyway — they are the only proof this game works
+  with a host at all (`docs/d2c-findings.md` §6, §20). ⚠️ A **client** test file opts into a DOM with a
+  `// @vitest-environment jsdom` docblock on line 1 — not a config change, so the per-glob coverage gates in
+  `vitest.config.ts` stay untouched.
+- **The board asks the engine; it never re-derives a rule.** Affordances come from `legalInsertions` and
+  `reachableFrom`; a tile's corridors from `openings()`. If a rules function a UI needs takes a
+  `LabyrinthState`, narrow its parameter to the fields it actually reads (ruling 14) rather than copying the
+  rule into the client. And **never** `legalActions` in a board — it takes a state, and a client holds a view.
 - **`viewFor` and the view types live in the *engine* (`src/engine/view.ts`), not the module** — as in all five
   hub games. What a player may see is as much a rule as what they may do, it belongs under the 100% gate, and
   `./client`/`./bot` must be able to name the projection type without importing `./module`. The module just
