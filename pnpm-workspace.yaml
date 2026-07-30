@@ -1,0 +1,22 @@
+# pnpm settings for this single-package repo. (There is no `packages:` glob on purpose — this repo is
+# ONE package, not a workspace. The file exists only because pnpm 11 reads its settings from here.)
+
+# Native/postinstall build scripts we explicitly trust (pnpm blocks all others). Vitest pulls esbuild
+# in transitively and it needs its postinstall to place the platform binary.
+allowBuilds:
+  esbuild: true
+
+# Peers are contracts for the HOST that installs this game (it brings @game-hub/kernel,
+# @game-hub/ui-kit and React). Auto-installing them here would hide a missing peer declaration behind
+# a silently-materialised copy — exactly the class of bug this out-of-repo pilot exists to surface. The
+# three peers are also declared as devDependencies so this repo can build and test standalone.
+autoInstallPeers: false
+
+# ⚠️ Track D / D2c finding: pnpm 11 refuses packages younger than its default `minimumReleaseAge`
+# (a supply-chain guard). `@game-hub/kernel@1.1.0` and `@game-hub/ui-kit@1.0.0` were published the same
+# day this repo was scaffolded, so `pnpm install` blocked them until they were excluded here — pnpm
+# wrote these two lines itself. Any real first consumer of a freshly-published @game-hub package hits
+# this. Once the versions age past the threshold these entries can be deleted.
+minimumReleaseAgeExclude:
+  - '@game-hub/kernel@1.1.0'
+  - '@game-hub/ui-kit@1.0.0'
