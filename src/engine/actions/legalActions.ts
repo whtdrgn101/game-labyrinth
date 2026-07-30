@@ -1,6 +1,6 @@
 import { ROTATIONS } from '../core';
 import type { LabyrinthState } from '../core';
-import { legalInsertions } from '../internal';
+import { legalInsertions, reachableFrom } from '../internal';
 import type { Action } from './action';
 
 /**
@@ -18,14 +18,19 @@ import type { Action } from './action';
  * one, and pruning symmetric duplicates is a search optimisation that belongs to the bot, not to the
  * statement of what is legal.
  *
- * The `move` phase returns nothing yet — moving the pawn is L2, and until it lands there is no action to
- * offer there (see ROADMAP.md).
+ * In the `move` phase it is the flood-fill from the active piece's square, in `reachableFrom`'s stable
+ * reading order — **at least one candidate and at most 49**, because the piece's own square is always
+ * reachable (staying put is a move, pg. 2). So the `move` phase is never empty and a turn can always be
+ * completed, however sealed off a piece is.
  */
 export function legalActions(state: LabyrinthState, playerId?: string): readonly Action[] {
   if (state.status === 'ended') return [];
   const active = state.players[state.activePlayerIndex]!;
   if (playerId !== undefined && playerId !== active.id) return [];
-  if (state.phase !== 'insert') return [];
+
+  if (state.phase === 'move') {
+    return reachableFrom(state.board, active.position).map((target): Action => ({ type: 'MOVE', target }));
+  }
 
   return legalInsertions(state).flatMap((insertion) =>
     ROTATIONS.map((rotation): Action => ({ type: 'INSERT', insertion, rotation })),

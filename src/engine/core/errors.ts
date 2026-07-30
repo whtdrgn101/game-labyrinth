@@ -14,6 +14,10 @@ export type LabyrinthErrorCode =
   // ILLEGAL_INSERTION because it is a different mistake: the arrow was fine, the tile's facing was not —
   // and the host's `parseAction` (L3) wants to tell a client which half of its payload was wrong.
   | 'INVALID_ROTATION'
+  // The move target isn't a square of the 7×7 board at all (off the edge, or not a whole number). The
+  // same shape-before-rules split as INVALID_ROTATION vs ILLEGAL_INSERTION: a payload that doesn't name a
+  // square is a different mistake from one that names a square you can't get to.
+  | 'INVALID_POSITION'
   // The target square isn't reachable along connected paths from where the pawn stands (pg. 2).
   | 'UNREACHABLE';
 

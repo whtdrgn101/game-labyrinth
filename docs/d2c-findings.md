@@ -18,6 +18,11 @@ kernel's `record()` and `makeSeating` from the registry copy rather than from so
 friction at all**, and the seat helper's Labyrinth-bound `GameError` subclass survives the round trip
 (asserted in `tests/kernel.test.ts` and again in `tests/applyAction.test.ts`). One new finding, §14.
 
+**Re-verified at L2 (2026-07-30):** same four gates clean, `pnpm test` = **220 tests, `src/engine/**` still at
+100%/100%/100%/100%**. L2 completed the turn, so it is the first slice that could be checked the way the hub
+checks a game — by *playing* one — and that turned out to be the one thing this repo has no tooling for.
+One new finding, §15.
+
 **Verdict up front:** the four-subpath package shape works out-of-repo essentially as documented. Nothing
 was blocked; nothing needed a workaround that changes the game's design. What's missing is all
 **scaffolding-and-proof** infrastructure: an external author hand-copies four config files that the hub's
@@ -237,3 +242,25 @@ deliberately spelling the whole payload out rather than spot-checking keys.
 > the *input to its client's `describe`*, so payloads should be designed against the sentence they will
 > eventually render. The rule "everything logged is public" is stated loudly; the rule "everything the feed
 > will say must be in the payload" is not stated at all.
+
+### 15. There is no way to *run* a game out here — no script runner, no bench ⚠️ worth fixing hub-side
+
+L2 finished the turn loop, so the honest check is the hub's own: drive a whole seeded game through
+`applyAction` and look at the result. In the monorepo that is `pnpm bench` (`packages/bench`, a dev-only
+harness every game's bot is calibrated with). Out here there is **nothing to run a TypeScript file with**:
+the recipe's `devDependencies` are eslint/prettier/typescript/vitest/coverage and React types — no `tsx`, no
+`ts-node`, and although `vite` is present transitively under vitest, pnpm's strict node_modules means neither
+`vite-node` nor a bare `import 'vite'` resolves from a script.
+
+What worked, and what it cost: a scratchpad `.mjs` that imports Vite **by absolute path into
+`node_modules/.pnpm/vite@<version>/…`**, spins up `createServer({ middlewareMode: true })` and
+`ssrLoadModule('/src/engine/index.ts')`. That does run the real shipped source, but it hard-codes a version
+directory that any `pnpm update` invalidates — not something to check in, and not something an external author
+would work out unaided. The alternative (a full-game test *inside* `src/engine/tests/`) is worse: a
+thousand-turn playthrough is a slow, flaky thing to put behind a coverage gate, and it isn't a unit test.
+
+> **Hub-side suggestions, cheapest first:** (a) add `tsx` to the recipe's `devDependencies` and a
+> `"play": "tsx scripts/play.ts"` line to the scripts block — one dependency, and every game gets a way to
+> drive itself; (b) publish the bench harness as `@game-hub/bench` so an external game can calibrate a bot at
+> L5 the way an in-repo one can — otherwise finding 6's gap ("no way to test `./module` or `./client`")
+> extends to `./bot` as well, and a published bot's strength is nobody's measured number.

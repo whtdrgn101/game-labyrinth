@@ -30,11 +30,14 @@ lockfile resolves `@game-hub/*` to registry tarballs with integrity hashes, and 
 
 ## Status
 
-**L0 shipped** — the data spine: the rules types, the tile/treasure data, the fixed board transcribed from
-the rulebook's board photo, and `createGame` (injected-rng shuffle, orientations and deal) at 100% engine
-coverage. `./module`, `./client` and `./bot` are honest typed placeholders: the bindings that are settled,
-and no fabricated behaviour. The slice plan, the rules digest and every ruling live in
-**[`ROADMAP.md`](./ROADMAP.md)**.
+**L2 shipped — the engine plays a complete game.** L0 laid the data spine (rules types, tile/treasure data,
+the fixed board transcribed from the rulebook's board photo, and `createGame` with an injected-rng shuffle,
+orientations and deal); L1 added the slide (the 12 arrows, the no-reverse rule, pawns carried along a pushed
+line and wrapped round the edge); L2 added the other half of a turn — flood-fill reachability, the pawn move,
+the treasure flip, the turn hand-off and the immediate win — so a whole seeded game runs through
+`applyAction` alone. 220 tests, 100% engine coverage. `./module`, `./client` and `./bot` are still honest
+typed placeholders: the bindings that are settled, and no fabricated behaviour. The slice plan, the rules
+digest and every ruling live in **[`ROADMAP.md`](./ROADMAP.md)**.
 
 ## Layout
 

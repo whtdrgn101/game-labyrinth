@@ -5,9 +5,11 @@ and the platform's proof that a game can be built entirely **outside** the hub m
 published `@game-hub/kernel` and `@game-hub/ui-kit`. See [`README.md`](./README.md) for the pilot story and
 [`docs/d2c-findings.md`](./docs/d2c-findings.md) for what that cost.
 
-**Status:** **L1 shipped** (2026-07-30) — the slide: the 12 arrows, insertion at any facing, the no-reverse
-rule, pawns carried along the line and wrapped round the edge, and the `applyAction`/`legalActions` seam.
-167 tests, `src/engine/**` still at 100%. **Next: L2, movement + treasure + win.**
+**Status:** **L2 shipped** (2026-07-30) — the second half of a turn: flood-fill reachability over the maze's
+open corridors, the `MOVE` action (travel any distance or stay put), the treasure flip, the end of a turn,
+and the immediate win. **The engine now plays a complete game through `applyAction` alone** — driven to a
+real win at 2, 3 and 4 seats (evidence below). 220 tests, `src/engine/**` still at 100%.
+**Next: L3, the module (`viewFor` + `parseAction` + the `GameModule` object).**
 
 The authoritative rules are the rulebook PDF (`reference_materials/TheAMAZEingLabyrinth.pdf` — gitignored,
 copyrighted; page numbers are cited in comments instead). ⚠️ **Read the page before implementing a rule.**
@@ -175,6 +177,44 @@ stopping. **Consequence:** until L2 lands, `legalActions` returns `[]` in the `m
 script that wants a second slide hands the turn on itself (`readyToInsert` in the engine tests does exactly
 that, and says so).
 
+### 10. A treasure is found where the piece **stops**, never where it passes (L2)
+
+The rulebook says "you try to get to the square showing the same treasure as on your card" and "Once you
+find the treasure you are looking for, turn over your treasure card" (pg. 2). It never addresses a piece
+that crosses its own treasure on the way somewhere else — at a physical table nobody asks, because the
+question only exists once a computer is doing the walking. The engine flips **only** when the move ends on
+the treasure's square. Strongest reason first:
+
+- **The engine is handed a destination, not a route.** Movement is legal iff the target is in the flood-fill
+  (pg. 2, "any square that you can move your piece to directly, without interruption") — a *set*, not a path.
+  A maze square is typically reachable by several routes, so "the squares you passed through" is not a
+  well-defined quantity unless the action starts carrying a declared path. Flipping on pass-through would
+  mean inventing that payload, and with it the question of which route a player *meant*.
+- **It matches the physical game exactly.** A hand slides a pawn along the groove and the table looks at
+  where it came to rest. Nobody audits the intermediate squares.
+- **It keeps a real decision in the game.** "Stop on the treasure or carry on to a better square" is a choice
+  a player makes; auto-collecting anything under the pawn's route would delete it.
+
+⚠️ The consequence is that a player *must* end a turn on their treasure to claim it — which is exactly the
+tension the rulebook's own hint describes ("If you are unable to get to the treasure you are searching for,
+you can move your playing piece into a position that gives you a good starting point for your next turn").
+Tested in `move.test.ts` ("checks only the square the piece STOPS on").
+
+### 11. "Stay where you are" is a `MOVE` to your own square, not a second action (L2)
+
+"Or, you can leave your playing piece where it is" (pg. 2). The two ways to model it were a distinct
+`PASS_MOVE`/`STAY` arm, or a `MOVE` whose target is the square the piece already occupies. The second wins,
+and it is the same argument that rejected a placeholder `PASS_MOVE` at L1 (ruling 9):
+
+- **The flood-fill already contains the origin square**, unavoidably — a set of reachable squares always
+  includes where you started. So "stay" is *already* a legal target; adding an action for it would be a
+  second spelling of a move the engine must accept anyway, and two spellings of one move is two code paths
+  through the flip, the win check and the turn hand-off.
+- **It keeps a turn exactly two actions.** `INSERT` then `MOVE`, always, at every seat — the module, the
+  client and the bot each get one shape to handle rather than a special case.
+- The client can still *render* it as a "stay put" button; that is presentation over a `MOVE` payload whose
+  `from` equals its `to`, which is precisely what the log entry says.
+
 ---
 
 ## Slice plan
@@ -194,8 +234,12 @@ gate turns on with L5.
   `Action`/`applyAction`/`legalActions` seam (48 candidates opening, 44 after); four typed rejections
   (`WRONG_PHASE`, `INVALID_ROTATION`, and `ILLEGAL_INSERTION` for both "not an arrow" and the reverse).
   Turn passing moved to L2 (ruling 9). 167 tests, `src/engine/**` at 100%.
-- **L2 — movement + treasure + win**: flood-fill reachability over tile openings, move/stay, the card flip,
-  the immediate win check — and the end of a turn. Extends L1's `Action`/`applyAction`/`legalActions`.
+- **L2 — movement + treasure + win** ✅ (2026-07-30): `internal/reachability.ts` (`isOnBoard`, `connects`,
+  `reachableFrom`, `isReachable`); the `MOVE` action — travel any distance or stay put, flip the top card on
+  the square you stop on (rulings 10, 11), pass the turn clockwise, and end the game the instant the last
+  card is flipped and the piece is home; `legalActions` in the `move` phase (1–49 reachable squares); two
+  more typed rejections (`INVALID_POSITION`, `UNREACHABLE`) and the L1-promised "a slide can never win"
+  invariant. A full game is now playable through `applyAction` alone. 220 tests, `src/engine/**` at 100%.
 - **L3 — module**: `viewFor` (secret stacks — the owner's top card only), `parseAction`, `summarize`,
   `mapError`, the real `GameModule` object.
 - **L4 — client**: the board UI, comps-first (classic theme, original art). Findings feed the hub's RR9b
@@ -219,24 +263,89 @@ gate turns on with L5.
   game's *client* (Container's `GameLog.tsx` is the pattern), and `MoveRecord` has no text field. L4 writes
   Labyrinth's, and the payload already carries everything it needs.
 
-### What L2 needs
+### What L2 built (for reference when extending it)
 
-1. **Reachability** — a flood-fill from the pawn's square over `openings()`, where two adjacent tiles connect
-   only if *both* face each other (`openings(a)` contains `d` **and** `openings(b)` contains `opposite(d)`).
-   `neighbor` + `opposite` are already there for it. "You can occupy any square that you can move your piece
-   to directly, without interruption … as far as you like" (pg. 2). The pawn's own square is always in the
-   set — staying put is a legal move, not a skipped one.
-2. **No blocking.** Pawns share squares (the rulebook has no occupancy rule) — L1's tests already lean on
-   this, wrapping four pawns off one tile.
-3. **The `MOVE` action** — reject an unreachable target with `UNREACHABLE` (the code is already declared),
-   reject it in the `insert` phase with `WRONG_PHASE`. Landing on the treasure named by `stack[0]` flips it
-   into `found` and reveals the next (pg. 2). **This is where the turn ends**: `phase` back to `insert`,
-   `activePlayerIndex` on one seat, `turn + 1` — see ruling 9.
-4. **The win check** — all cards flipped *and* the pawn on its own `START_CORNERS` square, checked the
-   instant the move resolves (pg. 2, "Ending the Game"). It produces the kernel's `ended` arm:
-   `{ status: 'ended', winnerIds: [id] }`, nothing else.
-   ⚠️ A player could satisfy both halves via the **slide's** wraparound rather than a move — a pawn wrapped
-   onto its home corner. The corners are fixed tiles at even/even squares, so they can never be pushed and a
-   wrap can never land on one; the win check therefore belongs to the move alone. Worth a test that says so.
-5. Tests: reachability against hand-built mazes (a straight corridor, a sealed single tile, a loop), stay-put,
-   the flip and its ordering, the immediate win, and the same purity/determinism assertions L1 uses.
+- `internal/reachability.ts` — the whole of movement legality, in four functions:
+  - `isOnBoard(position)` — bounded **and** integer-checked, because a target square comes off the wire.
+  - `connects(board, from, direction)` — the atom: two squares join only when **both** tiles face each other
+    (`from` open on `direction`, the neighbour open on `opposite(direction)`). Takes no players — pawns
+    cannot block, and the signature is what guarantees it rather than a comment.
+  - `reachableFrom(board, origin)` — BFS, returned in **reading order** (stable and origin-independent, the
+    same contract `INSERTIONS` has). Always contains `origin`; never more than 49 squares.
+  - `isReachable(board, origin, target)` — membership. An off-board target is simply never in the set, so it
+    needs no bounds check of its own.
+- `actions/move.ts` — validate (phase → square → reachability), flip if the tile you *stopped* on bears your
+  top card, then either end the game or hand the turn on. The win is checked **after** the flip, so the last
+  card and the homecoming could in principle land together (asserted, though the real board can't produce it
+  — corners bear no treasure).
+- The `MOVE` payload is `{ from, to, flipped, won }` — all public. `flipped` is the card that just went face
+  up; **the card revealed underneath it is deliberately absent** (it is the mover's secret, pg. 2) and there
+  is a test that greps the log entry for it. `won` is carried rather than derived so L4's `describe` can
+  render the winning line from the record alone. `from === to` is how "stayed put" reads (ruling 11).
+- Two error codes joined the union: **`UNREACHABLE`** (a real square with no open path — a rules mistake) and
+  **`INVALID_POSITION`** (not a square at all — a payload mistake). The split mirrors
+  `INVALID_ROTATION`/`ILLEGAL_INSERTION` and exists for the same reason: L3's `parseAction` and the host's
+  error mapping want to say *which half* of the payload was wrong.
+- `legalActions` in the `move` phase returns 1–49 `MOVE` arms in `reachableFrom` order. **It is never
+  empty**, so a turn can always be completed however sealed-in a piece is — which is what lets a bot loop
+  (L5) and the host's "is this game stuck?" reasoning stay simple.
+- ⚠️ **`turn`/`activePlayerIndex` do not advance on a win** (Can't Stop's pattern): the game stops on the
+  winner's seat, `phase` resets to `insert`, `legalActions` goes empty and `applyAction` answers `GAME_OVER`.
+
+**Verified end-to-end, not just green:** a scratchpad driver (Vite SSR-loading `src/engine/index.ts`, so it
+runs the shipped source) played whole seeded games through `applyAction` **only**, alternating INSERT/MOVE
+across seats with a greedy chase-your-treasure policy. Seed 909 at 4 seats ended in **66 turns / 132 logged
+actions** with `winnerIds: ["p2"]`, the winner independently re-checked as home with an empty stack; 13 of
+15 games across 2/3/4 seats finished the same way (median ≈ 50 turns), and the two that didn't were the
+policy sitting in a local minimum — a repeated *position* fingerprint proved the cycle, and re-running the
+same seeds with a 10% ε-greedy escape finished all 15. Nothing about it was an engine stall.
+
+### What L3 needs (the module — the backend seam)
+
+L3 is a delegation layer: no new rules, and **nothing in `src/module/` may re-derive a rule** — it calls the
+engine. The hub's recipe is `docs/game-creation.md` §3; what is Labyrinth-specific:
+
+1. **`viewFor(state, viewer)` — the interesting one, and the reason this game was worth building.** Labyrinth
+   is the first hosted game with a *structured* per-player secret: each seat's `stack` is face-down and even
+   its owner sees only `stack[0]` (pg. 2, "Each player looks at the first card of his stack ... without
+   showing it"). So the projection is **top-card-only redaction**, three cases:
+   - the viewing player: `stack` → `[stack[0]]` (or `[]`), i.e. their own next target and nothing further —
+     redacting a player *from themselves* is new for the platform, and it is right: a player must not be able
+     to read their own future card order out of the network tab either.
+   - every other player: `stack` → **its length only** (a count, not names). The count is public — the pile
+     is on the table — so the view needs a `stackCount: number` field rather than a truncated array; sending
+     `['?','?']` would be inventing data of the wrong type.
+   - `found`, positions, the board, `extraTile`, `lastPush`, `turn`, `phase`: **all public**, verbatim.
+   ⚠️ A spectator (`viewer` with no seat) gets the everyone-else projection for every seat. Write the test
+   that says a projected state contains **no** treasure name that isn't in someone's `found` or the viewer's
+   own top card — a whole-object assertion, not a field spot-check, because the failure mode is a field added
+   later that quietly ships the stack.
+2. **`parseAction(body)`** — two arms. `INSERT` needs `side` ∈ the four directions, `line` ∈ `SLIDE_LINES`,
+   `rotation` ∈ `ROTATIONS`; `MOVE` needs `target.row`/`target.col` as integers. Reject shape here (a
+   `ParseResult` failure), and let the engine reject *legality* — the two error codes above are already split
+   along exactly that line, so don't duplicate the reachability check in the parser.
+3. **`summarize(state)`** — the lobby card. Whose turn, `phase`, and each seat's `found.length` out of its
+   dealt total. Nothing secret; `stack` contents must not appear.
+4. **`mapError`** — `PLAYER_NOT_FOUND` → 404; `NOT_YOUR_TURN`/`GAME_OVER`/`WRONG_PHASE` → 409;
+   `ILLEGAL_INSERTION`/`UNREACHABLE` → 422 (a legal-shaped move the rules refuse);
+   `INVALID_ROTATION`/`INVALID_POSITION`/`INVALID_PLAYER_COUNT` → 400 (malformed payload). ⚠️ It must
+   `instanceof` **this package's** `GameError` subclass — see `internal/players.ts`'s note on why
+   `makeSeating` is injected with it.
+5. **`kernelContract: KERNEL_CONTRACT_VERSION`**, imported from the kernel this package compiled against —
+   never a literal (`LABYRINTH_INFO` already does this; the module object spreads it).
+6. **The colour question comes due here** (ruling 6 + `docs/d2c-findings.md` §12): a pawn's colour *is* its
+   home corner, so the platform's per-seat colour picker and `createGame` have to agree. The engine currently
+   assigns `SEAT_COLORS[seat]`; the owner's ruling is that the picked colour should drive it, which means
+   `createGame` takes each seat's colour (validated: one of four, no duplicates) and the module passes the
+   lobby's picks through. **That is a `createGame` signature change — do it in L3, before L4 draws a board
+   around the old assumption.**
+
+What L3 should know that L2 learned:
+
+- **The engine's public surface is already sufficient.** `applyAction`, `legalActions`, `reachableFrom`,
+  `createGame` and the constants are everything a module needs; if L3 finds itself importing from
+  `src/engine/internal/`, that is the seam being violated, not a missing export.
+- **`legalActions` in the `move` phase is never empty**, so the module never needs a "no legal move" branch.
+- **A `MOVE` payload is the whole log line.** L4's `describe` gets `{ from, to, flipped, won }` and nothing
+  else — if a sentence needs more (e.g. the treasure a player is *now* hunting), it must come from the
+  projected state, never from a payload, or the secret leaks into the public log.

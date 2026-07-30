@@ -1,7 +1,8 @@
 // Public API of @game-hub/game-labyrinth/engine. Consumers (./module, ./client, ./bot) import only from here.
 //
-// L0 ships the data spine + setup; L1 adds the slide (the maze-moving half of a turn) and the action seam.
-// Movement, the treasure flip and the win condition arrive with L2 — see ROADMAP.md.
+// L0 ships the data spine + setup; L1 adds the slide (the maze-moving half of a turn) and the action seam;
+// L2 adds the other half — reachability, the pawn move, the treasure flip, the end of a turn and the win.
+// A full game is playable through `applyAction` alone from L2 on. See ROADMAP.md.
 
 // Domain types
 export type {
@@ -59,6 +60,11 @@ export { isFixedPosition, neighbor, openings, opposite, rotateDirection, samePos
 // no-reverse rule (pg. 2, "The only exception").
 export { INSERTIONS, entrySquare, exitSquare, isLegalInsertion, legalInsertions, linePath } from './internal';
 
+// Movement (L2): the flood-fill that says where a piece may go. `reachableFrom` is what L4 highlights on
+// the board and L5 searches over; `connects` is the single definition of "two squares are joined" (both
+// tiles must face each other), so the UI never re-derives a corridor from a tile's openings.
+export { connects, isOnBoard, isReachable, reachableFrom } from './internal';
+
 // Actions — the move seam the host, the UI and the bot all go through.
-export { applyAction, insert, legalActions } from './actions';
+export { applyAction, insert, legalActions, move } from './actions';
 export type { Action, ActionType } from './actions';

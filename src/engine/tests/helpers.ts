@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import { GameError } from '../core';
-import type { Board, Insertion, LabyrinthState, Position } from '../core';
+import type { Board, Insertion, LabyrinthState, Position, Rotation, Tile, TileShape, TreasureName } from '../core';
 import { createGame } from '../createGame';
 import { linePath, tileAt } from '../internal';
 
@@ -43,6 +43,67 @@ export function withPawnAt(state: LabyrinthState, playerId: string, position: Po
     ...state,
     players: state.players.map((player) => (player.id === playerId ? { ...player, position } : player)),
   };
+}
+
+/**
+ * The box-drawing glyph for every shape/rotation pair — the same notation the fixed board is documented in
+ * (`core/tiles.ts`), where the glyph's own strokes *are* the tile's corridors. `mazeBoard` reads a maze
+ * written in it, so a reachability fixture looks like the thing it tests.
+ */
+const GLYPHS: Readonly<Record<string, { shape: TileShape; rotation: Rotation }>> = {
+  '│': { shape: 'straight', rotation: 0 }, // N-S
+  '─': { shape: 'straight', rotation: 90 }, // E-W
+  '└': { shape: 'corner', rotation: 0 }, // N-E
+  '┌': { shape: 'corner', rotation: 90 }, // E-S
+  '┐': { shape: 'corner', rotation: 180 }, // S-W
+  '┘': { shape: 'corner', rotation: 270 }, // W-N
+  '┬': { shape: 'tee', rotation: 0 }, // E-S-W
+  '┤': { shape: 'tee', rotation: 90 }, // N-S-W
+  '┴': { shape: 'tee', rotation: 180 }, // N-E-W
+  '├': { shape: 'tee', rotation: 270 }, // N-E-S
+};
+
+/**
+ * A hand-built 7×7 maze from 7 rows of 7 glyphs — the fixture behind every reachability test, because a
+ * flood-fill over a *seeded* board is untestable by inspection (you would be asserting whatever the code
+ * happened to produce). Every tile is treasure-free; `withTreasureAt` adds one where a test needs it.
+ *
+ * Ignores the fixed-tile layout deliberately: reachability is a property of the tiles standing on the
+ * squares, not of which of them may be pushed, so a fixture is free to put anything anywhere.
+ */
+export function mazeBoard(rows: readonly string[]): Board {
+  return rows.map((row, r) =>
+    [...row].map((glyph, c): Tile => {
+      const spec = GLYPHS[glyph];
+      if (spec === undefined) throw new Error(`Unknown maze glyph "${glyph}" at row ${r}, col ${c}`);
+      return { id: `t-r${r}c${c}`, shape: spec.shape, rotation: spec.rotation, treasure: null };
+    }),
+  );
+}
+
+/** The same board with `treasure` printed on one square's tile. */
+export function withTreasureAt(board: Board, position: Position, treasure: TreasureName): Board {
+  return board.map((row, r) =>
+    row.map((tile, c) => (r === position.row && c === position.col ? { ...tile, treasure } : tile)),
+  );
+}
+
+/** The same state on a different maze — a hand-built board dropped under a real game. */
+export function withBoard(state: LabyrinthState, board: Board): LabyrinthState {
+  return { ...state, board };
+}
+
+/** Give a seat a known face-down stack, so a test can control which treasure it is hunting. */
+export function withStack(state: LabyrinthState, playerId: string, stack: readonly TreasureName[]): LabyrinthState {
+  return {
+    ...state,
+    players: state.players.map((player) => (player.id === playerId ? { ...player, stack } : player)),
+  };
+}
+
+/** Skip the mandatory slide: hand the state to the pawn-moving half of the turn (pg. 2, step 2). */
+export function readyToMove(state: LabyrinthState): LabyrinthState {
+  return { ...state, phase: 'move' };
 }
 
 /** The tile ids along an insertion's line, entry end first — the thing a slide is supposed to shift. */
