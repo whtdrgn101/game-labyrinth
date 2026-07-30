@@ -3,6 +3,10 @@ import { GameError as KernelGameError } from '@game-hub/kernel';
 /** Machine-readable reasons a Labyrinth action can be rejected. The backend maps these to HTTP 4xx. */
 export type LabyrinthErrorCode =
   | 'INVALID_PLAYER_COUNT'
+  // A seat asked for a pawn colour that isn't one of the four (pg. 1 Set Up), or two seats asked for the
+  // same one. A colour is *rules* data here — it names your home corner (ROADMAP ruling 6) — so the engine
+  // validates it rather than trusting the lobby that collected the picks.
+  | 'INVALID_PLAYER_COLOR'
   | 'PLAYER_NOT_FOUND'
   | 'NOT_YOUR_TURN'
   | 'GAME_OVER'

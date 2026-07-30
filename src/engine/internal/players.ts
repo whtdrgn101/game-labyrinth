@@ -1,6 +1,18 @@
 import { makeSeating } from '@game-hub/kernel';
-import { GameError } from '../core';
-import type { LabyrinthPlayer } from '../core';
+import { GameError, SEAT_COLORS } from '../core';
+import type { LabyrinthPlayer, PlayerColor } from '../core';
+
+/**
+ * Is this one of the four pawn colours (pg. 1 Set Up)? The single runtime definition of a legal colour,
+ * read straight off `SEAT_COLORS` so the predicate cannot drift from the list.
+ *
+ * It exists because a colour arrives **off the wire** — the lobby collects a player's pick and the module
+ * hands it through unvalidated on purpose, so that "which colours exist" is defined in exactly one place
+ * (the same shape-then-rules split `parseAction` keeps with the engine).
+ */
+export function isPlayerColor(value: unknown): value is PlayerColor {
+  return typeof value === 'string' && (SEAT_COLORS as readonly string[]).includes(value);
+}
 
 // Seat helpers, shared from the kernel but bound to Labyrinth's own `GameError` subclass so a
 // PLAYER_NOT_FOUND stays `instanceof` the class the host's `mapError` branches on (see the kernel's

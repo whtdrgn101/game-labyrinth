@@ -1,5 +1,5 @@
 import type { SeatedView } from '@game-hub/kernel/bot';
-import type { LabyrinthPlayer } from '../engine';
+import type { LabyrinthPlayerView } from '../engine';
 
 /**
  * `@game-hub/game-labyrinth/bot` — the AI.
@@ -17,7 +17,13 @@ import type { LabyrinthPlayer } from '../engine';
  * see the note in `vitest.config.ts`.
  *
  * ⚠️ **The bot decides from the redacted view, never from `LabyrinthState`** — it may not see an opponent's
- * face-down stack. `assertBotTurn` (kernel) is the ended/not-your-turn preamble every `decide` opens with,
- * and it reads exactly the structural slice aliased below; L3's `viewFor` return type will satisfy it.
+ * face-down stack, and may not see past the top card of its *own* (pg. 2). `assertBotTurn` (kernel) is the
+ * ended/not-your-turn preamble every `decide` opens with, and it reads exactly the structural slice aliased
+ * below — L3's `viewFor` return type satisfies it.
+ *
+ * ⚠️ Bound to `LabyrinthPlayerView` (L3's projection), **not** `LabyrinthPlayer`: a seat in a view carries a
+ * `stackCount` and a `stack` that is `null` for every seat but the viewer's, so binding the *state's* player
+ * type here would have let a bot compile against cards it is never handed. Corrected at L3 — the placeholder
+ * had it wrong, which is the sort of thing only writing the real projection finds.
  */
-export type LabyrinthBotView = SeatedView<LabyrinthPlayer>;
+export type LabyrinthBotView = SeatedView<LabyrinthPlayerView>;

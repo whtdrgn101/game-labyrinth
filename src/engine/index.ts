@@ -68,3 +68,11 @@ export { connects, isOnBoard, isReachable, reachableFrom } from './internal';
 // Actions — the move seam the host, the UI and the bot all go through.
 export { applyAction, insert, legalActions, move } from './actions';
 export type { Action, ActionType } from './actions';
+
+// Redaction (L3): the per-viewer projection the module hands to every client, and the types the board and
+// the bot decide from. `viewFor` lives in the engine — with the rest of the rules, under the 100% gate —
+// because *what a player may see* is as much a rule as what they may do, and because `./client` and `./bot`
+// must be able to name the view type without importing `./module` (the seam rule; every hub game does the
+// same). See `view.ts` for why a view is built field-by-field rather than spread from the state.
+export { viewFor } from './view';
+export type { LabyrinthPlayerView, LabyrinthView, Viewer } from './view';

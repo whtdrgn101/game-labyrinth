@@ -48,7 +48,13 @@ so a game that ends up resolving a different kernel copy is caught at registrati
 
 ## Conventions
 
-- **Unit tests live in `src/<subpath>/tests/`**, not beside the source.
+- **Unit tests live in `src/<subpath>/tests/`**, not beside the source. `src/engine/**` is gated; `src/module/**`
+  is not, and is tested anyway — the module's tests are the only proof this game works with a host at all
+  (`docs/d2c-findings.md` §6).
+- **`viewFor` and the view types live in the *engine* (`src/engine/view.ts`), not the module** — as in all five
+  hub games. What a player may see is as much a rule as what they may do, it belongs under the 100% gate, and
+  `./client`/`./bot` must be able to name the projection type without importing `./module`. The module just
+  delegates. ⚠️ Build a view **field by field**; never spread the state into one.
 - Import siblings by direct path (`./geometry`), cross-folder via the barrel (`../core`), the kernel by
   package specifier (`@game-hub/kernel`). Under `tests/`, reach the engine as `../`.
 - One mechanic = one file in the relevant folder + one matching test file. Reuse `internal/` helpers.

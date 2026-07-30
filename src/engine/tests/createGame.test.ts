@@ -10,7 +10,7 @@ import {
   START_CORNERS,
   TREASURES,
 } from '../core';
-import type { LabyrinthState, Tile } from '../core';
+import type { LabyrinthState, PlayerColor, Tile } from '../core';
 import { createGame } from '../createGame';
 import { isFixedPosition, openings, tileAt } from '../internal';
 import { expectError, mulberry32, newGame, seats, seededGame } from './helpers';
@@ -61,6 +61,78 @@ describe('createGame — the opening position', () => {
   it('uses only the first colours at smaller counts', () => {
     expect(newGame().players.map((p) => p.color)).toEqual(['red', 'yellow']);
     expect(newGame(seats(3)).players.map((p) => p.color)).toEqual(['red', 'yellow', 'blue']);
+  });
+});
+
+/**
+ * "Each player chooses one of the … playing pieces and places it on its own color in one of the four corners
+ * of the game board" (pg. 1 Set Up). The piece is *chosen*, and the colour chosen names the corner — so a
+ * colour is an input to setup, not something the engine hands out (ROADMAP ruling 6).
+ */
+describe('createGame — choosing your pawn (pg. 1 Set Up)', () => {
+  const withColors = (players: readonly { name: string; color?: PlayerColor }[]): LabyrinthState =>
+    createGame({ id: 'g', players });
+
+  it('starts each pawn on the corner its chosen colour names', () => {
+    const game = withColors([
+      { name: 'Ann', color: 'blue' },
+      { name: 'Bob', color: 'green' },
+    ]);
+    expect(game.players.map((player) => player.color)).toEqual(['blue', 'green']);
+    expect(game.players[0]!.position).toEqual(START_CORNERS.blue);
+    expect(game.players[1]!.position).toEqual(START_CORNERS.green);
+  });
+
+  it('leaves turn order to the seating, not to the corners', () => {
+    // Seat order is the table's (pg. 2, "play continuing in a clockwise direction" — the players, not the
+    // corners), and it is the lobby's business. Picking colours out of clockwise order must not reorder it.
+    const game = withColors([
+      { name: 'Ann', color: 'blue' },
+      { name: 'Bob', color: 'red' },
+    ]);
+    expect(game.activePlayerIndex).toBe(0);
+    expect(game.players.map((player) => player.id)).toEqual(['p1', 'p2']);
+    expect(game.players[0]!.color).toBe('blue');
+  });
+
+  it('fills an unpicked seat from the colours still unclaimed, in seat order', () => {
+    const game = withColors([{ name: 'Ann' }, { name: 'Bob', color: 'red' }, { name: 'Cal' }]);
+    // Red is taken by seat 1, so the two silent seats take yellow and blue — the palette order, minus what
+    // was claimed. Deterministic, so a partly-picked table is as reproducible as a fully-picked one.
+    expect(game.players.map((player) => player.color)).toEqual(['yellow', 'red', 'blue']);
+  });
+
+  it('is exactly the old seat-ordered assignment when nobody picks', () => {
+    expect(newGame(seats(4)).players.map((player) => player.color)).toEqual([...SEAT_COLORS]);
+  });
+
+  it('refuses a colour that is not one of the four pawns', () => {
+    expectError(
+      () => withColors([{ name: 'Ann', color: 'purple' as PlayerColor }, { name: 'Bob' }]),
+      'INVALID_PLAYER_COLOR',
+    );
+    // Off the wire a colour need not even be a string — the module hands it through unvalidated on purpose.
+    expectError(
+      () => withColors([{ name: 'Ann', color: 7 as unknown as PlayerColor }, { name: 'Bob' }]),
+      'INVALID_PLAYER_COLOR',
+    );
+  });
+
+  it('refuses two seats asking for the same pawn — there is one of each in the box', () => {
+    expectError(
+      () =>
+        withColors([
+          { name: 'Ann', color: 'green' },
+          { name: 'Bob', color: 'green' },
+        ]),
+      'INVALID_PLAYER_COLOR',
+    );
+  });
+
+  it('checks the roster before it shuffles anything — an impossible table never gets a maze', () => {
+    // Ordering, not cosmetics: a bad seat count and a bad colour are both refused up front, so a rejection
+    // never depends on how far setup happened to get.
+    expectError(() => withColors([{ name: 'Solo', color: 'red' }]), 'INVALID_PLAYER_COUNT');
   });
 });
 

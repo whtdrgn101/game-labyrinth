@@ -15,7 +15,10 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['src/engine/**/*.test.ts', 'src/bot/**/*.test.ts'],
+    // `src/module/**` has no coverage *gate* (it is a host binding, and the hub's own backend suite is what
+    // finally exercises it), but its tests still run here — L3's redaction and payload parsing are the two
+    // places a mistake is invisible from inside the engine. See `docs/d2c-findings.md` §6.
+    include: ['src/engine/**/*.test.ts', 'src/module/**/*.test.ts', 'src/bot/**/*.test.ts'],
     // Ported from the hub's per-game configs: the bot's future bench/self-play tests run whole seeded
     // games (CPU-bound), and CI caps vitest to one fork (`VITEST_MAX_FORKS`), so the default 5s timeout
     // starves them under contention. Headroom, not a hang-mask — a genuinely wedged test still dies.

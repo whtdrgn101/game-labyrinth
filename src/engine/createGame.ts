@@ -9,12 +9,53 @@ import {
   START_CORNERS,
   TREASURES,
 } from './core';
-import type { LabyrinthPlayer, LabyrinthState, Tile } from './core';
-import { buildBoard, randomRotation, shuffle } from './internal';
+import type { LabyrinthPlayer, LabyrinthState, PlayerColor, Tile } from './core';
+import { buildBoard, isPlayerColor, randomRotation, shuffle } from './internal';
 
 /** Input for a single seat when creating a game. */
 export interface NewPlayer {
   readonly name: string;
+  /**
+   * The pawn this seat chose, by colour — and therefore **which corner it starts on and must return to**
+   * (pg. 1 Set Up: "Each player chooses one of the … playing pieces and places it on its own color in one of
+   * the four corners"; pg. 2 Ending the Game). Colour is rules data in Labyrinth, not a cosmetic seat tint,
+   * which is why it comes in here rather than being assigned by seat (ROADMAP ruling 6).
+   *
+   * **Optional.** A seat that names no colour takes the first one still unclaimed, in `SEAT_COLORS` order —
+   * so a caller that offers no choice at all gets exactly the old seat-ordered assignment (seat *i* →
+   * `SEAT_COLORS[i]`), and a partly-picked table fills the gaps deterministically.
+   */
+  readonly color?: PlayerColor;
+}
+
+/**
+ * Decide each seat's pawn colour: honour the picks, fill the rest from what's left (pg. 1 Set Up — the
+ * players choose their pieces, and whatever nobody chose is simply still in the box).
+ *
+ * Both rejections are the same mistake from the caller's point of view — a colour that cannot be taken —
+ * so they share `INVALID_PLAYER_COLOR`, and the message says which it was. The engine checks this even
+ * though the platform's colour picker enforces the same two rules: a picked colour arrives off the wire,
+ * and the corner it names is a rule.
+ */
+function assignColors(players: readonly NewPlayer[]): readonly PlayerColor[] {
+  const taken = new Set<PlayerColor>();
+  for (const player of players) {
+    const { color } = player;
+    if (color === undefined) continue;
+    if (!isPlayerColor(color)) {
+      throw new GameError('INVALID_PLAYER_COLOR', `"${String(color)}" is not one of the four pawn colours`);
+    }
+    if (taken.has(color)) {
+      throw new GameError('INVALID_PLAYER_COLOR', `Two seats asked for the ${color} pawn`);
+    }
+    taken.add(color);
+  }
+
+  // The unclaimed pawns, still in `SEAT_COLORS` order, handed out to the seats that named none in seat
+  // order — the one deterministic filling that leaves an all-default game identical to the old behaviour.
+  const spare = SEAT_COLORS.filter((color) => !taken.has(color));
+  let next = 0;
+  return players.map((player) => player.color ?? spare[next++]!);
 }
 
 export interface CreateGameOptions {
@@ -34,9 +75,11 @@ export interface CreateGameOptions {
  *
  * "Shuffle the path tiles, face down, and place them face up on the empty spaces of the game board to form
  * a random maze of paths. There should be one path tile remaining. … Shuffle the 24 treasure cards and
- * divide them evenly among the players. … Each player … places [a playing piece] on its own color in one of
- * the four corners." Face-down shuffling randomises each tile's **orientation** as well as its square, so
- * every placed tile draws a rotation too.
+ * divide them evenly among the players. Each player chooses one of the … playing pieces and places it on
+ * its own color in one of the four corners of the game board." Face-down shuffling randomises each tile's
+ * **orientation** as well as its square, so every placed tile draws a rotation too — and the piece a player
+ * *chooses* is an input (`NewPlayer.color`), not something the engine deals out, because the colour names
+ * the corner (ROADMAP ruling 6).
  *
  * **Start player — a deliberate deviation.** The rulebook's rule is "The last player to go on a treasure
  * hunt goes first" (pg. 2): a joke about the players' lives, with nothing in the game state to evaluate. It
@@ -52,6 +95,10 @@ export function createGame(options: CreateGameOptions): LabyrinthState {
       `Labyrinth supports ${MIN_PLAYERS}–${MAX_PLAYERS} players, got ${count}`,
     );
   }
+  // The roster is validated before anything is shuffled: an unclaimable pawn means this table can't exist,
+  // and a rejection shouldn't depend on how far setup got. (`assignColors` draws no randomness, so moving
+  // it about cannot change a seeded setup.)
+  const colors = assignColors(players);
 
   // Shuffle the 34 loose tiles face down, then turn each one up at a drawn orientation. The first 33 fill
   // the board's empty squares in reading order; the 34th is the extra tile that stays beside the board.
@@ -70,8 +117,7 @@ export function createGame(options: CreateGameOptions): LabyrinthState {
   const perPlayer = CARDS_PER_PLAYER[count]!;
 
   const playerStates: LabyrinthPlayer[] = players.map((player, seat) => {
-    // Seat order is clockwise round the board (pg. 2), which is what `SEAT_COLORS` encodes.
-    const color = SEAT_COLORS[seat]!;
+    const color = colors[seat]!;
     return {
       id: `p${seat + 1}`,
       name: player.name,

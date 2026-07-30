@@ -30,14 +30,17 @@ lockfile resolves `@game-hub/*` to registry tarballs with integrity hashes, and 
 
 ## Status
 
-**L2 shipped — the engine plays a complete game.** L0 laid the data spine (rules types, tile/treasure data,
-the fixed board transcribed from the rulebook's board photo, and `createGame` with an injected-rng shuffle,
-orientations and deal); L1 added the slide (the 12 arrows, the no-reverse rule, pawns carried along a pushed
-line and wrapped round the edge); L2 added the other half of a turn — flood-fill reachability, the pawn move,
-the treasure flip, the turn hand-off and the immediate win — so a whole seeded game runs through
-`applyAction` alone. 220 tests, 100% engine coverage. `./module`, `./client` and `./bot` are still honest
-typed placeholders: the bindings that are settled, and no fabricated behaviour. The slice plan, the rules
-digest and every ruling live in **[`ROADMAP.md`](./ROADMAP.md)**.
+**L3 shipped — the engine plays a complete game, and the backend seam is real.** L0 laid the data spine
+(rules types, tile/treasure data, the fixed board transcribed from the rulebook's board photo, and
+`createGame` with an injected-rng shuffle, orientations and deal); L1 added the slide (the 12 arrows, the
+no-reverse rule, pawns carried along a pushed line and wrapped round the edge); L2 added the other half of a
+turn — flood-fill reachability, the pawn move, the treasure flip, the turn hand-off and the immediate win;
+L3 added `./module` — the real `GameModule`, a shape-only `parseAction`, the error→HTTP map, and `viewFor`,
+the projection that redacts each player's face-down stack **from its own owner** down to the top card he is
+allowed to look at (pg. 2). Choosing your pawn now chooses your corner, as the rulebook says it does.
+295 tests, 100% engine coverage. `./client` and `./bot` are still honest typed placeholders: the bindings
+that are settled, and no fabricated behaviour. The slice plan, the rules digest and every ruling live in
+**[`ROADMAP.md`](./ROADMAP.md)**.
 
 ## Layout
 
@@ -47,7 +50,7 @@ src/
     core/       constants, types, errors, and the rulebook-transcribed tile/treasure data
     internal/   shared helpers (geometry, setup randomness, the kernel record()/seating bindings)
     tests/      one file per concern
-  module/     the backend seam — the bound host types + the game's static identity (GameModule at L3)
+  module/     the backend seam — the GameModule: createGame wiring, parseAction, the error map, summarize
   client/     the UI seam — the contract/DTO bindings + the typed REST calls (the board at L4)
   bot/        the AI (L5). 90% coverage gate, enabled with it.
 docs/

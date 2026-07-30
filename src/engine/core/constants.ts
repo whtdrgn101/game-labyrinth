@@ -41,10 +41,24 @@ export const DIRECTIONS: readonly Direction[] = ['north', 'east', 'south', 'west
 export const SLIDE_LINES: readonly SlideLine[] = [1, 3, 5];
 
 /**
- * Seat order, as pawn colours. Play "continu[es] in a clockwise direction" (pg. 2), so consecutive seats
- * must sit at consecutive corners *clockwise* around the board — red (top-left) → yellow (top-right) →
- * blue (bottom-right) → green (bottom-left), the colours as printed in the pg. 1 board photo. Seat *i*
- * takes `SEAT_COLORS[i]`, so turn order and table geometry agree at every player count.
+ * The four pawn colours, in **clockwise corner order** — red (top-left) → yellow (top-right) → blue
+ * (bottom-right) → green (bottom-left), as printed in the pg. 1 board photo.
+ *
+ * Two jobs, deliberately kept in one list:
+ *
+ * - It is the set of legal colours a seat may claim. "Each player chooses one of the … playing pieces and
+ *   places it on its own color in one of the four corners" (pg. 1 Set Up) — the choice is the player's, and
+ *   the colour chosen *is* the corner (ROADMAP ruling 6), so `createGame` validates a picked colour against
+ *   this list.
+ * - It is the **default** assignment order: a seat that picks nothing takes the first colour still
+ *   unclaimed, so an all-default game gives seat *i* `SEAT_COLORS[i]` exactly as it always did. That is also
+ *   the platform's palette-order default for a module's `colors` (design-patterns §2), so the two agree
+ *   without either knowing about the other.
+ *
+ * ⚠️ Turn order is **seat** order, not corner order. "Play continu[es] in a clockwise direction" (pg. 2)
+ * describes the players round the *table*, which the lobby's seating already encodes; once colours are
+ * picked rather than dealt, the seat on the clock next need not be the next corner clockwise — exactly as
+ * at a physical table where nobody checks you sat by your own pawn.
  */
 export const SEAT_COLORS: readonly PlayerColor[] = ['red', 'yellow', 'blue', 'green'];
 

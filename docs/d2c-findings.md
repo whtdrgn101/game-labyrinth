@@ -23,6 +23,12 @@ friction at all**, and the seat helper's Labyrinth-bound `GameError` subclass su
 checks a game — by *playing* one — and that turned out to be the one thing this repo has no tooling for.
 One new finding, §15.
 
+**Re-verified at L3 (2026-07-30):** same four gates clean, `pnpm test` = **295 tests, `src/engine/**` still at
+100%/100%/100%/100%**. L3 is the first slice that writes *host-facing* code, so it is where finding 6 (no way
+to test `./module` from out here) stops being theoretical: the substitute built for it is described in §6's
+update, and it found two real bugs before any host could have. Three new findings, §16–§18, and finding 12 is
+now resolved by an owner ruling.
+
 **Verdict up front:** the four-subpath package shape works out-of-repo essentially as documented. Nothing
 was blocked; nothing needed a workaround that changes the game's design. What's missing is all
 **scaffolding-and-proof** infrastructure: an external author hand-copies four config files that the hub's
@@ -133,6 +139,28 @@ blind against a contract and the first genuine execution happens in someone else
 > are per-repo … the compat contract is what replaces them") — the compat contract turns out to need an
 > executable half.
 
+**L3 update — what the substitute cost, and what it was worth.** The module shipped, so this stopped being a
+risk and became work. `src/module/tests/` hand-builds what a conformance kit would have handed over:
+a seeded playthrough driver that runs whole games through `createGame` → `parseAction` → `applyAction`, a
+leak scanner that serializes every viewer's projection after every action, an independent restatement of the
+error→status table, and per-member unit tests — **~400 lines, none of it Labyrinth-specific except the
+policy**. Every line of it is a guess at what a host will actually do: the parse-then-apply order, the
+per-viewer projection on every push, the `versionOf`/`movesOf` agreement, the `instanceof`-the-subclass
+requirement — all read out of `app.ts` and `game-creation.md` prose rather than executed.
+
+It earned its keep twice, which is the honest argument for publishing the kit rather than for skipping the
+work: the playthrough caught a `SeatedView<LabyrinthPlayer>` binding in `./bot` that would have let L5
+compile against cards it will never be handed, and the leak scanner caught that the *spec's own wording* for
+the invariant ("no treasure name outside `found` and your top card") was unsatisfiable, because all 24
+treasures are printed on the public board. Neither is findable by typechecking a module against the contract.
+
+> **What a published kit would have saved, concretely:** the driver and the scanner (both generic — "play
+> this module until `summarize().status === 'ended'`, projecting for every viewer at every step" needs to
+> know nothing about a game), the contract-member presence checks, and the guesswork about call *order*. What
+> it could not have saved is the game-specific half: the entitlement rule ("what may this viewer see?") is a
+> per-game statement, and a kit can at most ask for it as a callback. That split is worth designing for —
+> `describeModule(module, { entitled })` — rather than aiming for a fully game-agnostic suite.
+
 ### 7. `SeatedView` is generic over the player type, not the state
 
 My first `./bot` stub wrote `SeatedView<LabyrinthState>` — the natural reading of "the view the bot decides
@@ -209,6 +237,12 @@ the platform's choice drive the rules. (a) is smaller; (b) is more honest to the
 *do* choose your pawn. I'd take (a) — the platform shouldn't have to know the difference, and Labyrinth's
 corners are printed on the board.
 
+> **Resolved (owner, 2026-07-30): (b).** ROADMAP ruling 6 — colours stay pickable and the pick *is* the
+> corner. The rulebook backs it literally ("Each player **chooses** one of the … playing pieces and places it
+> on **its own color**", pg. 1 Set Up), which my recommendation had underweighted. Implemented at L3 (ruling
+> 12): `createGame` takes `players: { name, color? }[]`, validates against the four, and fills omissions
+> deterministically. **The engine half is done and the platform half cannot be done from here — see §16.**
+
 ### 13. Two setup primitives every game needs aren't on the kernel's framework-free barrel
 
 - **`shuffle(items, rng?)`** — `internal/random.ts` is a Fisher–Yates copy of the same helper each hub game
@@ -264,3 +298,72 @@ thousand-turn playthrough is a slow, flaky thing to put behind a coverage gate, 
 > drive itself; (b) publish the bench harness as `@game-hub/bench` so an external game can calibrate a bot at
 > L5 the way an in-repo one can — otherwise finding 6's gap ("no way to test `./module` or `./client`")
 > extends to `./bot` as well, and a published bot's strength is nobody's measured number.
+
+## E. Found at L3 (the module seam)
+
+### 16. `createGame` has no colour channel, so a lobby pick can't reach the rules ⚠️ needs a kernel minor
+
+Finding 12's resolution (owner ruling 6) makes a pawn colour **rules data** in Labyrinth: the colour you pick
+is the corner you start on and must return to. The engine now takes it — `createGame({ players: [{ name,
+color? }] })`, validated as one of four with no duplicates. The module is wired to pass it through. And it
+still cannot arrive, because kernel contract 1 types the member:
+
+```ts
+createGame(opts: { id: string; players: readonly { name: string }[]; rng: () => number }): S;
+```
+
+There is no seat-colour parameter, and `ModuleContext` (which *does* expose `colorsFor`) is not handed to
+`createGame` — by design, since setup must be pure. So the host knows every seat's chosen colour, stores it
+as coordination state, renders it in the shell, and has no way to tell the game about it.
+
+**What this costs today, exactly:** nothing on a default table and a visible contradiction on a picked one.
+The platform's no-picks default is palette order (seat *i* → `colors[i]`), Labyrinth's `colors` is
+`SEAT_COLORS`, and the engine's own fill is the same list in the same order — so an unpicked game agrees by
+construction, which is why this is not a blocker. But a player who picks **yellow** in the lobby gets a
+yellow chip in the shell's seat list and a **red** pawn on the red corner in the game, and the two never
+reconcile. L4's board is told to colour pawns from `view.players[].color` (never the payload's `colors` map),
+which hides the worst of it; the lobby list still lies.
+
+> **Hub-side suggestion (additive minor, contract stays 1):** widen the member to
+> `players: readonly { name: string; color?: string }[]` and have the core fill each seat's stored pick from
+> the same source `colorsFor` reads. It is strictly additive — every existing game ignores the field, and a
+> `{ name }` is already assignable to `{ name, color? }`, so no game needs touching. This package's module
+> **already declares the wider parameter type** (`NewGameOptions`) and its `newLabyrinthGame` is exported
+> from the `./module` barrel, so a host that wants to pass picks before the kernel moves can call that
+> directly. Worth deciding *before* D2d wires this game in, because until then Labyrinth's colour picker is
+> a picker that doesn't pick.
+
+### 17. `GameSummary` can't carry a game's own progress, so lobby cards are all the same card
+
+`summarize` returns the contract's `{ id, turn, status, activePlayerId, players: [{ id, name }] }` — nothing
+else, and rightly so, since the core renders it game-agnostically. For Labyrinth the one thing a player
+resuming a game actually wants is **how many treasures each seat has found out of its deal** (6/8/12 by seat
+count), which is entirely public — it is the face-up pile in front of each player (pg. 2). There is nowhere
+to put it. Every hosted game has quietly had the same gap (Container shows a turn number, Saint Petersburg
+substitutes its round counter for `turn` to squeeze *something* game-specific through), so this is a
+platform-wide shortfall rather than a Labyrinth quirk; an out-of-repo game just has no option of patching
+the host's list component to compensate.
+
+> **Hub-side suggestion (additive minor):** an optional `detail?: readonly { label: string; value: string }[]`
+> or a single `subtitle?: string` on `GameSummary`, rendered by the games list if present. Deliberately
+> stringly-typed and secret-free by construction — the module is already the thing that knows what is public.
+
+### 18. A redacted view can't be fed back into the engine — the first game whose bot needs to search
+
+Every entry point that *changes* or *enumerates* a game takes the full state: `applyAction(state, …)`,
+`legalActions(state, …)`, `legalInsertions(state)`. `viewFor` returns something deliberately different (a
+seat's `stack` is `null` or one card). So a bot, which by the platform's own rule (`game-creation.md` §5,
+"decide from the redacted view") only ever holds a view, **cannot simulate a candidate move**.
+
+The hub's five bots don't notice, because none of them searches: `decide(view, playerId)` scores heuristics
+and returns an action, and self-play holds the real state to advance it. Labyrinth's L5 is the first that
+genuinely wants lookahead — ≤ 12 arrows × 4 facings × a flood-filled reachable set is a real branching
+factor, and the whole reason this game was picked. This is a *game-design* problem to solve at L5, not a
+platform bug, but it is worth recording as a contract observation: **the seam publishes a view type it then
+refuses to accept back.** The pure geometry helpers that take a `board` (`reachableFrom`, `connects`,
+`linePath`, `INSERTIONS`) are the escape hatch and are why L5 is still tractable.
+
+> **Hub-side note, not a suggestion:** worth a line in `game-creation.md` §5 saying that a searching bot
+> needs its game's engine to expose board-level mechanics (not just state-level ones), since the view it is
+> handed is not a state. The alternative — letting bots hold real state — would quietly delete the guarantee
+> that a bot can't cheat, and should not be the answer.
