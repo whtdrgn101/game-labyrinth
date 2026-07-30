@@ -48,11 +48,13 @@ face-down stack **from its own owner** down to the top card he is allowed to loo
 with the banned one visibly dead and saying why, the extra tile with a rotation control, the flood-fill
 highlighted and clickable, "stay put" as a real button, and the move log in plain English.
 
-**The board is the *functional* stage, not the art.** Tiles, treasures and pawns are shapes and CSS — legible,
-responsive down to 320px, and structured so that **L4b**, a comps-first pass with original illustration,
-replaces the picture without touching the board's structure. `./bot` is still an honest typed placeholder
-(L5). 352 tests, 100% engine coverage. The slice plan, the rules digest and every ruling live in
-**[`ROADMAP.md`](./ROADMAP.md)**.
+**L4b shipped — the board is illustrated.** The direction is **Hedgeglow**: the labyrinth as an enchanted hedge
+garden at dusk, corridors of lantern-lit sandstone cut through moss-dark clipped foliage, all 24 treasures
+redrawn as original gold-leaf medallions hung like lanterns in the hedge, and the "you are hunting" card
+showing its medallion **large** so the 24 are tellable apart in play. The pass touched only the three art
+files: the board's structure, its testids and `describe.ts` did not move, and the maze is still legible at a
+35px phone tile. `./bot` is still an honest typed placeholder (L5). 355 tests, 100% engine coverage. The
+slice plan, the rules digest and every ruling live in **[`ROADMAP.md`](./ROADMAP.md)**.
 
 ## Layout
 
@@ -65,8 +67,9 @@ src/
   module/     the backend seam — the GameModule: createGame wiring, parseAction, the error map, summarize
   client/     the UI seam — the GameClient + the board
     Board.tsx     the 7×7 maze, the 12 arrows, the extra tile, the panels
-    TileFace.tsx  one tile, drawn from the engine's own openings()   ← L4b replaces the picture here
-    treasures.tsx a generated visual identity for the 24 treasures   ← and here
+    palette.ts    the Hedgeglow colours (L4b)                        ← the art lives in these three
+    TileFace.tsx  one tile, drawn from the engine's own openings()   ←
+    treasures.tsx the 24 original treasure medallions                ←
     describe.ts   the move log in plain English, from the payloads alone
   bot/        the AI (L5). 90% coverage gate, enabled with it.
 docs/
@@ -104,9 +107,9 @@ hub does exactly that from a committed `vendor/` directory, with a one-command r
 
 The rulebook PDF is **not** in this repository — it is copyrighted, so it stays local (gitignored) and the
 code cites page numbers instead. Mechanics and a list of treasure names aren't copyrightable; the
-_illustrations_ are, so every asset here is drawn fresh in the house style and nothing is traced. The L4 board
-draws its tiles and treasure marks from geometry and a generated palette; L4b replaces them with original
-artwork.
+_illustrations_ are, so every asset here is drawn fresh in the house style and nothing is traced. The tiles are
+drawn from the engine's own geometry, and each of the 24 treasure medallions (L4b) is an original silhouette
+written as SVG path data in `src/client/treasures.tsx` — from the plain English word, not from the card.
 
 ## Licence
 

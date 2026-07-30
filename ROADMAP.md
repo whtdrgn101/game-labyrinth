@@ -5,14 +5,22 @@ and the platform's proof that a game can be built entirely **outside** the hub m
 published `@game-hub/kernel` and `@game-hub/ui-kit`. See [`README.md`](./README.md) for the pilot story and
 [`docs/d2c-findings.md`](./docs/d2c-findings.md) for what that cost.
 
-**Status:** **D2d shipped** (2026-07-30) — this package is now **installed and playable in the Game Hub**.
+**Status:** **L4b shipped** (2026-07-30) — the board is **illustrated**. The owner picked **Hedgeglow** from
+the three comps: the labyrinth as an enchanted hedge garden at dusk — corridors of lantern-lit sandstone cut
+through moss-dark clipped foliage, treasures as gilt-ringed medallions hung like lanterns in it. All 24
+treasures are original drawings, the hunted card shows its medallion **large** (the owner's second decision),
+and the whole pass fitted inside the art files L4 isolated for it: the board's structure, its testids and
+`describe.ts` did not move. 355 tests, `src/engine/**` still at 100%. **Next: L5, the bot.** Detail in
+[What L4b built](#what-l4b-built-the-hedgeglow-art-pass).
+
+Earlier: **D2d shipped** (2026-07-30) — this package is now **installed and playable in the Game Hub**.
 The pilot's question is answered: a game built out here, against published `@game-hub/*`, hosts in the hub as
 an ordinary dependency resolving to compiled `dist/` — no Vite alias, no tsconfig include, nothing reaching
 back into the monorepo — and `docker compose up --build` over there produces an image where Labyrinth is the
 playable sixth game. This repo gained a real build (`tsconfig.build.json` → `dist/`, `publishConfig`,
 `prepack`, version `0.1.0`) and `pnpm pack:smoke`, which installs the tarball outside this repo and plays a
-game under plain `node`. **Next: L4b, the art pass (comps-first), then L5, the bot.** (Publishing to npm is
-the one thing not done — the hub vendors the packed tarball meanwhile.)
+game under plain `node`. (Publishing to npm is the one thing not done — the hub vendors the packed tarball
+meanwhile.)
 
 Earlier: **L4 (functional stage)** (2026-07-30) — the game became **playable**: a 7×7 maze drawn from
 the engine's own `openings()`, the 12 arrows with the banned one visibly dead and explaining itself, the extra
@@ -368,10 +376,10 @@ gate turns on with L5.
   silently broke the injected REST base URL), pnpm fetching *registry* copies of the hub's own packages to
   satisfy this package's peers, and the `@source` glob question — **answered: it works unchanged**, the
   hub's `@source '../node_modules/@game-hub'` reaches this package's compiled `dist/` (§11, §21 closed).
-- **L4b — the art pass (comps-first)**: original illustration for the tiles, the 24 treasures and the pawns,
-  in the classic enchanted-labyrinth theme. Nothing about the seam or the board's structure changes — L4
-  isolated the two things art replaces (`TileFace.tsx`, `treasures.tsx`) for exactly this. Findings feed the
-  hub's RR9b board revamp.
+- **L4b — the art pass (comps-first)** ✅ **shipped**: **Hedgeglow**, original illustration for the tiles, the
+  24 treasures and the pawns. Nothing about the seam or the board's structure changed — L4 isolated the things
+  art replaces for exactly this. See [What L4b built](#what-l4b-built-the-hedgeglow-art-pass); findings feed
+  the hub's RR9b board revamp.
 - **L5 — bot**: slide × rotation × move search over the redacted view, greedy baseline scored against the
   treasure (not the hop), self-play at every seat count, bench calibration; the `src/bot/**` 90% gate.
 - **L6 — polish**: the younger-children variant (pg. 2), action tooltips, an a11y pass.
@@ -577,9 +585,9 @@ through the **real** `parseLabyrinthAction` → `applyAction`. Headless Chromium
 Zero console errors throughout. Screenshots at 1280px and 320px are in the scratchpad; the 320px one has no
 horizontal overflow and the monograms are still readable at a 35px tile.
 
-**What L4b (art) still needs:** original tile fills/frames, the 24 treasure illustrations and pawn shapes.
-Only `TileFace.tsx` and `treasures.tsx` should change; `Board.tsx`'s structure, the testids and `describe.ts`
-are the contract. Keep the "board survives without the host's CSS tokens" property.
+**What L4b (art) needed, and did:** original tile fills/frames, the 24 treasure illustrations and pawn shapes,
+with `Board.tsx`'s structure, the testids and `describe.ts` as the contract, and the "board survives without
+the host's CSS tokens" property intact. All held — see the next section.
 
 **What D2d checked, and the answers** (the three things this repo could not test alone — all now measured
 against the hub's production container):
@@ -597,4 +605,73 @@ against the hub's production container):
 The board's testids — `board`, `maze`, `tile-<row>-<col>`, `arrow-<side>-<line>`, `extra-tile`,
 `extra-rotate-cw`/`-ccw`, `stay-put`, `hunted-card`, `seat-<id>`, `seat-found-<id>`, `seat-stack-<id>`,
 `pawn-<id>`, `labyrinth-banner`, `labyrinth-log` — are the e2e contract from here on, and the hub's
-`ui/e2e/labyrinth.spec.ts` now depends on them.
+`ui/e2e/labyrinth.spec.ts` now depends on them. **L4b added one** (`hunted-medallion`, inside `hunted-card`)
+and removed none.
+
+### What L4b built — the Hedgeglow art pass
+
+**The owner's two decisions**, from the approved comps (2026-07-30), are the whole brief:
+
+1. **Direction: Hedgeglow** — the enchanted hedge garden at dusk. Moss-dark clipped foliage for the walls,
+   lantern-lit sandstone for the corridors, treasures in gilt rings like lanterns hung in the hedge. Of the
+   three comps it kept the strongest wall/corridor contrast at 35px, which is the size that decides whether
+   the board is playable on a phone.
+2. **Tile-size treasure icons are the right size as comped — do not shrink or grow them** — but **the hunted
+   card must show the art LARGE**. In play the owner could not tell 24 medallions apart at tile size. That is
+   now a deliberate division of labour: a tile says _there is a treasure here_, the panel says _which one_.
+
+**Three art files, and only three.** `palette.ts` (new) holds the eleven Hedgeglow colours; `TileFace.tsx`
+draws a tile; `treasures.tsx` draws the 24. `Board.tsx` took exactly three additive changes — the enlarged
+hunted card, the arrows' gilt, and a tile backdrop (below) — with no structural or testid change.
+`describe.ts`, `Status.tsx`, `api.ts`, `types.ts` and every engine file were untouched.
+
+- **The corridor is now one `<path>`, not five rects.** Walking the centre square plus an arm per opening as a
+  single closed outline means one element carries both the sandstone fill _and_ its kerb (the stroke), with no
+  seam where two rectangles used to meet. ⚠️ The arms overshoot the tile box by 4 units so the stroke's **end
+  cap lands outside the SVG viewport and is clipped** — without that, the kerb draws a line across every
+  corridor mouth and the maze looks walled off at every tile boundary.
+- **The hedge is a 16-dot two-tone stipple per tile**, precomputed at module load in four fixed layouts and
+  picked per tile by hashing `tile.id`, so neighbouring tiles differ and a tile never changes. Dots sit on the
+  rim only — the inner 3×3 of the 5×5 grid falls inside the widest corridor and would only be painted over.
+- **Measured, not assumed (the performance question):** the board went from **614 to 1,459 elements — 2.4×**,
+  inside the 3–4× budget that would have forced a shared `<defs>`/`<pattern>`. Per tile: 6 → 20 nodes. The
+  pattern route stays available if the texture ever grows (a per-tile `<svg>` _can_ reference one by
+  `url(#id)`, because fragment identifiers resolve document-wide) — it is noted in `TileFace.tsx`.
+- **⚠️ A dark board exposed a sub-pixel bug L4 could not see.** Seven fluid columns put tile edges on
+  fractional device pixels (35.43px at a 320px viewport), so each tile's SVG boundary antialiases against
+  whatever is behind it. Against the page that was **white**, and the finished maze had a white hairline grid
+  ruled across it every few tiles. The fix is one inline `backgroundColor: HEDGE.wall` on the tile button —
+  inline, not a class, because the maze must not depend on the host's CSS. Any dark game board on a fluid
+  grid will hit this; it is worth carrying to the hub's RR9b revamp.
+- **The 24 icons are data, not JSX.** Each is a list of marks (a path or a disc; filled, stroked, or _knocked_
+  back to the medallion ground to cut an eye or a facet), so uniqueness is **testable** — the suite asserts 24
+  distinct serialised drawings, no empties, and every mark inside the 0–24 box. L4's computed monogram
+  survives as the fallback for a treasure whose name ever outruns its artwork (ruling 3).
+- **Hedgeglow is monochrome, so the shape is the whole identity** — L4's generated hues are gone. That is the
+  approved comp, and it is exactly why decision 2 exists. Icons were revised against screenshots, not
+  intuition: the moth's eyespots turned it into a second owl and were deleted; the gnome's hat and beard fused
+  into a rocket until a knocked brim line separated them; emerald's hairline step facets vanished at tile size
+  and became a bold octagon; spider was a starburst until the body grew and the legs shortened; lizard's
+  stroked tail disappeared and became a filled taper. **`dragon` is the one to revisit if anything** — three
+  drafts in, a spine-backed serpent reads as a beast rather than a bird, but it is the least self-evident of
+  the 24. Nothing else is close to confusable.
+- **Pawns** are turned-wood silhouettes (body + head + cast shadow) rather than discs, ringed in gilt for the
+  seat on the clock. `green` was lifted from `#2e9e4f` to `#42c169`: green ink on a moss-green hedge is the
+  one seat colour this palette fights, and the home-corner frame is drawn on the wall, not the corridor.
+- **The highlights were re-cut for the new ground.** L4's emerald wash is invisible on moss; a reachable
+  square is now lantern light — a pale-gold fill with a dashed gold edge over a dark backing stroke, because
+  no single colour holds its edge against both the pale corridor and the dark hedge.
+
+**Verified by driving it, not by inference** (same harness as L4: a throwaway Vite playground mounting the
+shipped `Board.tsx` over a real `viewFor`, headless Chromium, scratchpad):
+
+| check | result |
+| ----- | ------ |
+| desktop 1280px | 49 tiles, 12 arrows, 4 pawns, 24 treasures, maze 544px, tile 69.7px, gap 0.00px |
+| move phase | 5 squares highlighted (= `reachableFrom`), all 12 arrows dead, `arrow-south-3` alone crossed out — highlights read clearly over the hedge _and_ over the sandstone |
+| 320px phone | tile **35.4px**, `scrollWidth === clientWidth` (no overflow), stipple reads as texture with no shimmer, medallions still say "treasure here" |
+| hunted card | medallion 80px (96px from `sm:`), name beside it; the card back is the same size, so the panel does not resize when the clock passes |
+| console | **zero errors** in every run |
+
+Gates at the end of the slice: typecheck ✅, lint ✅, `format:check` ✅, **355 tests** (20 files) ✅,
+`src/engine/**` **100%** statements/branches/functions/lines ✅.

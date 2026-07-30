@@ -54,6 +54,12 @@ so a game that ends up resolving a different kernel copy is caught at registrati
   with a host at all (`docs/d2c-findings.md` §6, §20). ⚠️ A **client** test file opts into a DOM with a
   `// @vitest-environment jsdom` docblock on line 1 — not a config change, so the per-glob coverage gates in
   `vitest.config.ts` stay untouched.
+- **The artwork lives in three files and nowhere else** — `client/palette.ts` (the Hedgeglow colours),
+  `client/TileFace.tsx` (a tile) and `client/treasures.tsx` (the 24 medallions). `Board.tsx` is structure,
+  affordances and testids; if a change is about how something *looks*, it belongs in one of the three.
+  ⚠️ Those three use **literal colours, never Tailwind classes**: a game package ships classes and no CSS, so
+  a host that has not wired Tailwind up must lose the side panels and still keep a readable maze
+  (`docs/d2c-findings.md` §21). The board's testids are the hub's e2e contract — additive only.
 - **The board asks the engine; it never re-derives a rule.** Affordances come from `legalInsertions` and
   `reachableFrom`; a tile's corridors from `openings()`. If a rules function a UI needs takes a
   `LabyrinthState`, narrow its parameter to the fields it actually reads (ruling 14) rather than copying the

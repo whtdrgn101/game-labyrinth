@@ -282,6 +282,29 @@ describe('the hunted card', () => {
     expect(screen.getByTestId('hunted-card').getAttribute('data-treasure')).toBe('crown');
   });
 
+  /**
+   * L4b, the owner's decision: the hunted card is the one place the treasure art has to be *tellable
+   * apart*, so it renders the medallion at 80 px (96 from `sm:` up) instead of L4's 32 px chip. The size is
+   * asserted through the `hunted-medallion` testid and its classes — the failure mode being repaired here
+   * is "the art shrank back to a chip", which nothing else in the suite would notice.
+   */
+  it('renders the hunted treasure as a large medallion, not a chip', () => {
+    const state = withStack(seededGame(), 'p1', ['ruby']);
+    renderBoard(view(state, ['p1']));
+    const medallion = within(screen.getByTestId('hunted-card')).getByTestId('hunted-medallion');
+    expect(medallion.getAttribute('data-treasure')).toBe('ruby');
+    expect(Number(medallion.getAttribute('width'))).toBeGreaterThanOrEqual(72);
+    expect(medallion.getAttribute('class')).toContain('sm:h-24');
+  });
+
+  it('draws the card back at the same size, so the panel does not resize between seats', () => {
+    renderBoard(view(seededGame(), null));
+    const back = within(screen.getByTestId('hunted-card')).getByTestId('hunted-medallion');
+    expect(back.getAttribute('data-treasure')).toBeNull();
+    expect(Number(back.getAttribute('width'))).toBeGreaterThanOrEqual(72);
+    expect(back.getAttribute('class')).toContain('sm:h-24');
+  });
+
   it('says “get home” once every card is flipped', () => {
     const state = withStack(seededGame(), 'p1', []);
     renderBoard(view(state, ['p1']));

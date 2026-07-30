@@ -23,19 +23,21 @@ import { ActionTip, ActivityFeed, Button, cn, GameOver, seatIdentity, TurnBanner
 import type { BoardProps } from './types.js';
 import * as labyrinthApi from './api.js';
 import { describeMoveRecord } from './describe.js';
+import { HEDGE } from './palette.js';
 import { PAWN_INK, TileFace, TileSwatch } from './TileFace.js';
 import type { PawnOnTile } from './TileFace.js';
-import { TreasureChip } from './treasures.js';
+import { TreasureCardBack, TreasureChip, TreasureHero } from './treasures.js';
 
 /**
- * Labyrinth's board — the whole game as one plugin the shell renders (L4, **functional stage**).
+ * Labyrinth's board — the whole game as one plugin the shell renders (L4, art-passed at L4b).
  *
  * ## What this board is, and what it is not
  *
- * It is the *playable* board: every rule the engine enforces has an affordance here, drawn with shapes and
- * CSS. It is **not** the art. L4b is a comps-first pass that replaces the tile fills, the treasure marks and
- * the pawns with original illustration; it should need no structural change here, which is why the picture
- * of a tile is isolated in `TileFace.tsx` and the treasure identity in `treasures.tsx`.
+ * It is the *playable* board: every rule the engine enforces has an affordance here. It is **not** the art:
+ * the picture of a tile lives in `TileFace.tsx`, the treasure identity in `treasures.tsx` and the Hedgeglow
+ * palette in `palette.ts`. That split is what let L4b repaint the whole board with two structural changes
+ * here and no testid change at all — the hunted card's medallion (the owner's decision: it has to be
+ * *tellable apart*, so it renders at 80–96 px rather than the 32 px chip) and the arrows' gilt.
  *
  * ## The three things a Labyrinth board has to get right
  *
@@ -257,6 +259,12 @@ export default function LabyrinthBoard({
                 disabled={!clickable}
                 aria-label={squareLabel(position, tile.treasure, pawns, home, isReachable)}
                 onClick={() => doMove(position)}
+                /* L4b: an opaque hedge backdrop behind the tile's SVG. A 7-column fluid grid puts tile
+                   edges on fractional device pixels (35.43px at 320px), so the SVG's own boundary
+                   antialiases against whatever is behind it — which used to be the page, and drew a white
+                   hairline grid across the dark hedge. Inline, not a class: the maze must not depend on the
+                   host's CSS (`TileFace.tsx`). */
+                style={{ backgroundColor: HEDGE.wall }}
                 className={cn(
                   'relative block aspect-square w-full p-0',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-primary',
@@ -361,19 +369,20 @@ export default function LabyrinthBoard({
               {focus && !focusHidden ? `${focus.name} is hunting` : 'Face down'}
             </h2>
             {focusHidden ? (
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="inline-block h-10 w-8 rounded-sm border-2 border-dashed border-muted-foreground/50 bg-muted"
-                />
+              <div className="flex items-center gap-3">
+                <TreasureCardBack />
                 <span className="text-xs text-muted-foreground">
                   Another player&apos;s card — only its owner may look (pg. 2).
                 </span>
               </div>
             ) : hunted ? (
-              <p className="flex items-center gap-2 text-base font-medium">
-                <TreasureChip name={hunted} size={32} showName />
-              </p>
+              /* L4b, the owner's decision: the medallion **large**. At tile size a treasure says "something
+                 is here"; the card is where you have to be able to tell 24 of them apart, and L4's 32px chip
+                 could not. `TreasureHero` is 80px, 96px from `sm:` up. */
+              <div className="flex items-center gap-3">
+                <TreasureHero name={hunted} />
+                <span className="min-w-0 text-lg font-medium capitalize">{hunted}</span>
+              </div>
             ) : (
               <p className="text-sm">
                 Every treasure found — get your pawn home to
@@ -487,12 +496,14 @@ function ArrowButton({
         {/* A fixed square glyph rather than `h-full w-full`: the frame's arrow row would otherwise size
             itself from an SVG with no intrinsic height, and the north/south arrows would come out taller
             than the east/west ones are wide. */}
+        {/* Hedgeglow (L4b): a gilt spearhead on the garden's own shadow-green, so the frame belongs to the
+            same board as the maze. A banned arrow keeps the shape and loses the gold. */}
         <svg viewBox="0 0 100 100" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden>
           <path
             d="M 18 22 L 82 22 L 50 82 Z"
             transform={`rotate(${String(ARROW_SPIN[side])} 50 50)`}
-            fill={banned ? '#9ca3af' : '#c2761a'}
-            stroke={banned ? '#6b7280' : '#7c4a10'}
+            fill={banned ? '#6f7a6c' : HEDGE.gilt}
+            stroke={banned ? '#4a534a' : HEDGE.medal}
             strokeWidth={6}
             strokeLinejoin="round"
           />

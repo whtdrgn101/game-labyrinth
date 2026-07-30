@@ -3,11 +3,16 @@ import { TREASURES } from '../../engine';
 import { treasureLook } from '../treasures';
 
 /**
- * The generated treasure identity.
+ * The 24 treasure identities (Hedgeglow, L4b).
  *
- * The point of these tests is that the identity is **computed**, not tabulated — so the guarantee a player
- * relies on (24 treasures you can tell apart) has to hold for whatever the list says, including after ruling
- * 3's warning that some of the names may yet be corrected.
+ * The guarantee a player relies on is simple and worth a test: **24 treasures you can tell apart**. Under
+ * L4 that was carried by a generated hue + silhouette + monogram; under L4b the drawing carries it, and the
+ * monogram survives as the safety net for a treasure whose name outran its artwork (ruling 3 warns that a
+ * name may yet be corrected). So the assertions below are: every treasure is drawn, no two are drawn the
+ * same, and the fallback identity is still unique and still *computed* rather than tabulated.
+ *
+ * ⚠️ What no test can check is whether two icons are *visually* distinct at 35 px — that is a screenshot and
+ * a pair of eyes (see ROADMAP L4b). What it can check is that they are not literally the same drawing.
  */
 describe('treasureLook', () => {
   it('covers all 24 treasures', () => {
@@ -15,7 +20,39 @@ describe('treasureLook', () => {
     for (const name of TREASURES) expect(treasureLook(name).name).toBe(name);
   });
 
-  it('gives every treasure a unique monogram of at most 3 characters', () => {
+  it('draws every one of the 24 — no blanks, nothing left to the fallback', () => {
+    for (const name of TREASURES) {
+      const marks = treasureLook(name).marks;
+      expect(marks.length, `${name} has no artwork`).toBeGreaterThan(0);
+      for (const mark of marks) {
+        if (mark.kind === 'path') expect(mark.d.length, `${name} has an empty path`).toBeGreaterThan(0);
+        else expect(mark.r, `${name} has a zero-radius disc`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('gives every treasure its own drawing — 24 distinct identities', () => {
+    const drawings = TREASURES.map((name) => JSON.stringify(treasureLook(name).marks));
+    expect(new Set(drawings).size).toBe(24);
+  });
+
+  it('keeps every drawing inside the 0–24 icon box, so nothing is clipped by the medallion', () => {
+    // A path's numbers are extracted rather than parsed: this is a bounds smoke test, not an SVG parser.
+    for (const name of TREASURES) {
+      for (const mark of treasureLook(name).marks) {
+        const numbers =
+          mark.kind === 'path'
+            ? (mark.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number)
+            : [mark.cx - mark.r, mark.cx + mark.r, mark.cy - mark.r, mark.cy + mark.r];
+        for (const value of numbers) {
+          expect(value, `${name} strays outside the icon box`).toBeGreaterThanOrEqual(-1);
+          expect(value, `${name} strays outside the icon box`).toBeLessThanOrEqual(25);
+        }
+      }
+    }
+  });
+
+  it('gives every treasure a unique monogram of at most 3 characters (the fallback identity)', () => {
     const monograms = TREASURES.map((name) => treasureLook(name).monogram);
     expect(new Set(monograms).size).toBe(24);
     for (const monogram of monograms) {
@@ -28,21 +65,5 @@ describe('treasureLook', () => {
     expect(treasureLook('skull').monogram).toBe('Sk'); // `sword` already took S
     expect(treasureLook('spider').monogram).toBe('Spi'); // … and `spellbook` took Sp
     expect(treasureLook('bat').monogram).toBe('B');
-  });
-
-  // The golden-angle step exists so that *consecutive* treasures — the ones dealt and found next to each
-  // other — never look alike. 15° apart (360/24) would be indistinguishable.
-  it('keeps neighbouring treasures far apart in hue', () => {
-    for (let i = 1; i < TREASURES.length; i += 1) {
-      const a = treasureLook(TREASURES[i - 1]!).hue;
-      const b = treasureLook(TREASURES[i]!).hue;
-      const gap = Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
-      expect(gap).toBeGreaterThan(60);
-    }
-  });
-
-  it('varies the silhouette too, so hue is never the only difference', () => {
-    const shapes = new Set(TREASURES.map((name) => treasureLook(name).shape));
-    expect(shapes.size).toBe(4);
   });
 });
