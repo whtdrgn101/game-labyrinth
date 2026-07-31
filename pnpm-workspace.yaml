@@ -20,8 +20,9 @@ autoInstallPeers: false
 #
 # `@game-hub/kernel@1.2.0` (D2a's follow-up: the seat-colour channel this game's §16 finding asked for,
 # plus `shuffle`/`mulberry32` on the framework-free barrel) joined the list at D2d for the same reason —
-# it was a day old when this package bumped its peer range to `^1.2.0`.
+# it was a day old when this package bumped its peer range to `^1.2.0`. `@game-hub/kernel@1.3.0` (the
+# optional `GameClient.Icon` box-lid field, which this package's `client/Icon.tsx` now fills) joined the
+# same way when the icon landed.
 minimumReleaseAgeExclude:
-  - '@game-hub/kernel@1.1.0'
-  - '@game-hub/kernel@1.2.0'
+  - '@game-hub/kernel@1.1.0 || 1.2.0 || 1.3.0'
   - '@game-hub/ui-kit@1.0.0'

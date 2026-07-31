@@ -38,6 +38,10 @@ export const labyrinthClient: GameClient<LabyrinthView> = {
     'Then walk as far as you like along connected corridors, or stay put. Stop on your treasure to turn its card face up.',
     'Flip every card and get your pawn home to your own colour’s corner to win.',
   ],
+  // The box-lid mark (kernel 1.3.0's optional `Icon`). Lazy for the same reason as `Board`: the picker
+  // shows every hosted game, so an eager icon would ship this game's art to whoever only opened the home
+  // screen. See `Icon.tsx` for why it draws its own tile rather than reusing `TileFace`.
+  Icon: lazy(() => import('./Icon.js')),
   Board: lazy(() => import('./Board.js')),
   Status: LabyrinthStatus,
 };

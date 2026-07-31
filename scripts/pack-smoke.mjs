@@ -118,6 +118,15 @@ assert.equal(
   Symbol.for('react.lazy'),
   'the board must still be a React.lazy — losing the split is an invisible regression',
 );
+// The box-lid mark (kernel 1.3.0's optional Icon) must ship, and must be lazy for the same reason.
+assert.ok(labyrinthClient.Icon, 'the client must expose an Icon (kernel 1.3.0 box lid)');
+assert.equal(
+  labyrinthClient.Icon.$$typeof,
+  Symbol.for('react.lazy'),
+  'the icon must be a React.lazy — an eager icon ships every game mark to the home screen',
+);
+const icon = await import(pathToFileURL(join(dirname(require.resolve('@game-hub/game-labyrinth/client')), 'Icon.js')).href);
+assert.equal(typeof icon.default, 'function', 'dist/client/Icon.js must load and default-export the icon');
 // …and the file that lazy import points at must actually be in the tarball and loadable by plain Node.
 // Imported by path rather than through the exports map on purpose: this is the deep file nothing else
 // touches until a player opens a game, which is exactly why it is worth proving here.
@@ -154,6 +163,9 @@ export const surface = {
   seat: labyrinthModule.createGame(opts).players[0]?.color satisfies PlayerColor | undefined,
   engine: createGame({ id: 'g', players: [{ name: 'Ann' }, { name: 'Bob' }], rng: () => 0.5 }).turn,
   client: labyrinthClient.name,
+  // The box-lid mark (kernel 1.3.0's optional Icon): its type must survive publication too. Optional on
+  // the contract, so a consumer sees \`LazyExoticComponent<...> | undefined\`.
+  icon: labyrinthClient.Icon,
   // The board's props and the payload it is handed, bound the way the host's registry binds them.
   board: null as BoardProps<LabyrinthView> | null,
   payload: null as LabyrinthPayload | null,

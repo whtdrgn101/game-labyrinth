@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { labyrinthClient } from '../index';
+import LabyrinthIcon from '../Icon';
 import { LABYRINTH_INFO } from '../../module';
 import { readyToMove, view } from './helpers';
 
@@ -37,6 +38,21 @@ describe('labyrinthClient', () => {
     const board = labyrinthClient.Board as unknown as { $$typeof: symbol; _payload: unknown };
     expect(board.$$typeof).toBe(Symbol.for('react.lazy'));
     expect(board._payload).toBeDefined();
+  });
+
+  it('keeps the box-lid icon lazy, for the same reason as the board', () => {
+    const icon = labyrinthClient.Icon as unknown as { $$typeof: symbol; _payload: unknown };
+    expect(icon.$$typeof).toBe(Symbol.for('react.lazy'));
+    expect(icon._payload).toBeDefined();
+  });
+
+  it('draws the box-lid mark as a self-contained SVG that honours the className', () => {
+    render(<LabyrinthIcon className="size-8" />);
+    const svg = screen.getByLabelText('Labyrinth');
+    expect(svg.tagName.toLowerCase()).toBe('svg');
+    expect(svg.getAttribute('class')).toBe('size-8');
+    // Literal Hedgeglow fills, no Tailwind: the mark must be legible before the host scans this package.
+    expect(svg.querySelector('[fill^="#"]')).not.toBeNull();
   });
 
   it('renders a cheap, non-lazy status line for the shell header', () => {
