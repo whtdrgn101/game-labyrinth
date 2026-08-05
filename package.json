@@ -1,6 +1,6 @@
 {
   "name": "@game-hub/game-labyrinth",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Labyrinth (Ravensburger, The aMAZEing Labyrinth) as a Game Hub game package — the first game built OUTSIDE the platform monorepo, against the published @game-hub/kernel and @game-hub/ui-kit. Four subpath exports over TypeScript source: ./engine (pure rules core), ./module (backend GameModule seam), ./client (UI GameClient seam), ./bot (AI).",
   "license": "BSD-3-Clause",
