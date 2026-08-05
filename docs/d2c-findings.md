@@ -511,7 +511,7 @@ precisely so a mis-wired host loses the chrome and not the board.
 
 ### 23. `npm publish` ignores `publishConfig.exports` — and every green check misses it ⚠️
 
-**0.1.2 shipped broken and was unpublished.** The tarball `npm publish` uploaded carried the *dev* exports
+**0.1.2 shipped broken and is deprecated.** The tarball `npm publish` uploaded carried the *dev* exports
 (`"./engine": "./src/engine/index.ts"`, …) while `files: ["dist"]` kept `src/` out of it — a package that
 installs cleanly and then can't resolve a single subpath (`TS2307` in the hub was the first symptom).
 
@@ -524,7 +524,7 @@ Why nothing caught it: `pack:smoke` — the check that exists precisely to valid
 packs with **`pnpm pack`**, which *does* apply the override. So it green-lit a different tarball than the
 one `npm publish` uploaded. The gap is invisible from inside this repo; it only surfaces in a consumer.
 
-**Fixes taken here:** 0.1.3 republished with `pnpm publish`; 0.1.2 unpublished from the registry; a
+**Fixes taken here:** 0.1.3 republished with `pnpm publish`; 0.1.2 deprecated on the registry pointing at it (a true unpublish needs an interactive 2FA login — npm forbids it for granular tokens); a
 `prepublishOnly` guard (`scripts/assert-pnpm-publish.mjs`) now fails any `npm publish` outright, turning
 the trap into a one-line error.
 
