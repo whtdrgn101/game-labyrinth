@@ -504,3 +504,30 @@ precisely so a mis-wired host loses the chrome and not the board.
   the game only for the rest of the sentence, meant Labyrinth's `describe` is a pure function of a
   `MoveRecord` — which is what makes it unit-testable without a DOM (16 of this slice's tests) and what keeps
   a per-viewer secret from being reachable from inside it.
+
+---
+
+## G. Found publishing 0.1.2 (the L4c release)
+
+### 23. `npm publish` ignores `publishConfig.exports` — and every green check misses it ⚠️
+
+**0.1.2 shipped broken and was unpublished.** The tarball `npm publish` uploaded carried the *dev* exports
+(`"./engine": "./src/engine/index.ts"`, …) while `files: ["dist"]` kept `src/` out of it — a package that
+installs cleanly and then can't resolve a single subpath (`TS2307` in the hub was the first symptom).
+
+The mechanism: the dev/publish exports split (D2d) relies on **`publishConfig.exports`**, and that override
+is applied by **pnpm** at pack time. `npm publish` honours only a handful of `publishConfig` keys
+(`registry`, `access`, `tag`…) and silently ignores `exports`. 0.1.0/0.1.1 were published with
+`pnpm publish` and are fine; 0.1.2 was published with `npm publish` and was not.
+
+Why nothing caught it: `pack:smoke` — the check that exists precisely to validate the publish artefact —
+packs with **`pnpm pack`**, which *does* apply the override. So it green-lit a different tarball than the
+one `npm publish` uploaded. The gap is invisible from inside this repo; it only surfaces in a consumer.
+
+**Fixes taken here:** 0.1.3 republished with `pnpm publish`; 0.1.2 unpublished from the registry; a
+`prepublishOnly` guard (`scripts/assert-pnpm-publish.mjs`) now fails any `npm publish` outright, turning
+the trap into a one-line error.
+
+> **Worth a line in the platform's publish checklist** (beside §9's release-age note): *publish with
+> `pnpm publish`, never `npm publish`* — every game package with the dev/publish exports split has this
+> exact trap, and `pack:smoke` cannot see it.

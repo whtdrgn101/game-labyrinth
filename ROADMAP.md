@@ -720,3 +720,6 @@ the real `Board.tsx` over a real `viewFor`, headless Chromium via playwright-cor
 
 Gates at the end of the slice: typecheck ✅, lint ✅, `format:check` ✅, **361 tests** (20 files) ✅,
 `src/engine/**` **100%** statements/branches/functions/lines ✅.
+Published as **0.1.3** — 0.1.2 was this same code published with `npm publish`, which silently ships the
+dev (`src/`) exports in a dist-only tarball, and was unpublished (`docs/d2c-findings.md` §23; a
+`prepublishOnly` guard now refuses anything but `pnpm publish`).
