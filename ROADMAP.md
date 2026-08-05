@@ -675,3 +675,48 @@ shipped `Board.tsx` over a real `viewFor`, headless Chromium, scratchpad):
 
 Gates at the end of the slice: typecheck ✅, lint ✅, `format:check` ✅, **355 tests** (20 files) ✅,
 `src/engine/**` **100%** statements/branches/functions/lines ✅.
+
+### What L4c built — the first player-feedback pass (2026-08-05)
+
+Four changes from playtest feedback, all in `src/client/` — no engine, module or bot file touched, all
+testids additive. The owner's readings of the feedback (confirmed 2026-08-05):
+
+1. **"Make it obvious what colour the current player is" → the banner wears your pawn.** "You are Ann" now
+   carries a pawn-silhouette badge in each held seat's colour (`PawnBadge` in `TileFace.tsx` — it is
+   artwork, so it lives in an art file and reuses the board pawn's own silhouette and inks). One badge per
+   held seat, colour from `view.players[].color` as always (ruling 12), `aria-hidden` because the adjacent
+   name carries the information. Testid: `banner-pawn-<seatId>`. The banner needed the seat's *colour*, so
+   the board filters `players` by `controlledIds` itself — the same rule `seatIdentity` applies for
+   `myNames`, which returns names alone.
+2. **"Turn off hints" = the arrows' hover tooltips, not the move highlights.** The `ActionTip` wrappers on
+   the 12 arrows are gone (and with them `ArrowButton`'s `facing` prop, which only the tip text used). The
+   reachable-square flood-fill **stays** — it is public information read off the board, not a hint. The
+   banned arrow is still rendered, disabled and crossed out (pg. 2's own advice), but now explains itself
+   only through its `aria-label`.
+3. **The spider was redrawn** (same pass, second round of feedback): the eight straight spokes gained a
+   **knee** each — two segments meeting at a raised joint, drawn by the renderer's round joins — and the
+   head a pair of chelicerae. The fangs' first draft pointed up-and-out and read as *ears*; they now bow
+   out and converge, tips pointing at each other. Filled tapers, not strokes (the lizard-tail lesson).
+   Reviewed against 4× screenshots at hero (96 px) and on-tile (15 px) size, beside the beetle — the two
+   no longer share the radiating-legs silhouette.
+4. **"Pawns sit on top of treasures" → a hide-other-pawns toggle.** Pawns are drawn over the tile art, so a
+   pawn parked on your treasure hides it. `toggle-pawns` (in the Players panel header) hides every pawn this
+   client does not hold — hotseat: all but the seat on the clock — and **resets on every `game.version`
+   change**: it is a peek at the ground, not a mode, and a player who left it on across other people's moves
+   would be playing blind without knowing it. The toggle blinds the eye only — `squareLabel` still names
+   everyone standing on a square, since a screen reader is never occluded by a drawing.
+
+**Verified by driving it** (same harness as L4/L4b: a throwaway Vite playground in the scratchpad mounting
+the real `Board.tsx` over a real `viewFor`, headless Chromium via playwright-core, 4 seats, seed 7):
+
+| check | result |
+| ----- | ------ |
+| banner | red pawn badge beside "You are Ann", 15px, aligned with the text at 1280px and 320px |
+| arrow hover | 0 `role="tooltip"` elements after hover (was 1 at L4b); no `aria-describedby` on any arrow |
+| hide toggle | 4 pawns → 1 (Ann's stays), `aria-pressed` true, label flips to "Show all pawns", → 4 on second press; home-corner frames stay visible throughout |
+| move phase | highlights unchanged (= `reachableFrom`), banned arrow still crossed out and labelled "blocked this turn" |
+| 320px phone | `scrollWidth === clientWidth`, badge visible |
+| console | zero errors from the board (the one 404 is the playground's own missing favicon) |
+
+Gates at the end of the slice: typecheck ✅, lint ✅, `format:check` ✅, **361 tests** (20 files) ✅,
+`src/engine/**` **100%** statements/branches/functions/lines ✅.

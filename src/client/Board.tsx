@@ -19,12 +19,12 @@ import type {
   Rotation,
   SlideLine,
 } from '../engine/index.js';
-import { ActionTip, ActivityFeed, Button, cn, GameOver, seatIdentity, TurnBanner } from '@game-hub/ui-kit';
+import { ActivityFeed, Button, cn, GameOver, seatIdentity, TurnBanner } from '@game-hub/ui-kit';
 import type { BoardProps } from './types.js';
 import * as labyrinthApi from './api.js';
 import { describeMoveRecord } from './describe.js';
 import { HEDGE } from './palette.js';
-import { PAWN_INK, TileFace, TileSwatch } from './TileFace.js';
+import { PAWN_INK, PawnBadge, TileFace, TileSwatch } from './TileFace.js';
 import type { PawnOnTile } from './TileFace.js';
 import { TreasureCardBack, TreasureChip, TreasureHero } from './treasures.js';
 
@@ -87,12 +87,16 @@ export default function LabyrinthBoard({
   onLeave,
 }: BoardProps<LabyrinthView>) {
   const active = game.players[game.activePlayerIndex];
-  const { canDrive, myNames } = seatIdentity({
+  const { canDrive } = seatIdentity({
     players: game.players,
     activePlayerId: active?.id ?? null,
     bots,
     controlledIds,
   });
+  // The banner's identity, with its colour: the seats this client holds, in seating order. The same filter
+  // `seatIdentity` applies for `myNames`, repeated here because the banner now wears each seat's pawn
+  // *colour* too (player feedback, 2026-08-05 — ROADMAP L4c) and the shared helper returns names alone.
+  const mySeats = controlledIds ? game.players.filter((player) => controlledIds.includes(player.id)) : null;
 
   // The facing the extra tile will go in at — the player's own choice, and the only local state on the
   // board. It resets to the tile's real orientation whenever a *different* tile becomes the spare (i.e.
@@ -130,6 +134,18 @@ export default function LabyrinthBoard({
   const reachable = new Set(
     active && game.phase === 'move' && !ended ? reachableFrom(game.board, active.position).map(squareKey) : [],
   );
+
+  // "Hide the other pieces" (player feedback, 2026-08-05 — ROADMAP L4c): a pawn is drawn on top of the tile
+  // art, so a pawn parked on your treasure hides it. The toggle hides every pawn this client does not hold
+  // (hotseat: all but the seat on the clock) so the ground can be read. It resets on every recorded action —
+  // it is a peek at the board as it stands, and a player who left it on across other people's moves would be
+  // playing blind without knowing it.
+  const [othersHidden, setOthersHidden] = useState(false);
+  const version = game.version;
+  useEffect(() => {
+    setOthersHidden(false);
+  }, [version]);
+  const shownIds = othersHidden ? new Set(controlledIds ?? (active ? [active.id] : [])) : null;
 
   const pawnsBySquare = new Map<string, PawnOnTile[]>();
   for (const player of game.players) {
@@ -196,9 +212,22 @@ export default function LabyrinthBoard({
 
       <TurnBanner testId="labyrinth-banner" canDrive={canDrive} className="mb-0">
         <span>
-          {myNames ? (
+          {mySeats ? (
             <>
-              You are <span className="font-medium">{myNames.join(', ')}</span>
+              {/* Each name wears its seat's pawn (L4c): "You are Ann" only helps if you also know which
+                  colour Ann is pushing round the maze. */}
+              You are{' '}
+              {mySeats.map((seat, index) => (
+                <span key={seat.id} className="font-medium">
+                  {index > 0 && ', '}
+                  <PawnBadge
+                    color={seat.color}
+                    testId={`banner-pawn-${seat.id}`}
+                    className="mr-1 inline-block align-[-0.2em]"
+                  />
+                  {seat.name}
+                </span>
+              ))}
             </>
           ) : (
             <span className="text-muted-foreground">Hotseat — pass the device</span>
@@ -235,7 +264,6 @@ export default function LabyrinthBoard({
                   insertion={cell.insertion}
                   banned={banned}
                   disabled={!canInsert || banned}
-                  facing={facing}
                   onInsert={doInsert}
                 />
               );
@@ -246,6 +274,9 @@ export default function LabyrinthBoard({
             const isReachable = reachable.has(key);
             const clickable = canMove && isReachable;
             const pawns = pawnsBySquare.get(key) ?? [];
+            // The toggle blinds the eye, not the screen reader: `squareLabel` below still names everyone
+            // standing here — a reader user is never occluded by a drawing, so there is nothing to peek past.
+            const shownPawns = shownIds ? pawns.filter((pawn) => shownIds.has(pawn.id)) : pawns;
             const home = homes.get(key) ?? null;
             const origin = active !== undefined && squareKey(active.position) === key;
             return (
@@ -276,7 +307,7 @@ export default function LabyrinthBoard({
                     tile={tile}
                     fixed={isFixedPosition(position)}
                     home={home}
-                    pawns={pawns}
+                    pawns={shownPawns}
                     reachable={isReachable}
                     origin={origin && !isReachable}
                   />
@@ -392,7 +423,18 @@ export default function LabyrinthBoard({
           </section>
 
           <section className="rounded-lg border bg-card p-3" aria-label="Players">
-            <h2 className="mb-2 text-sm font-medium">Players</h2>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">Players</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="toggle-pawns"
+                aria-pressed={othersHidden}
+                onClick={() => setOthersHidden((value) => !value)}
+              >
+                {othersHidden ? 'Show all pawns' : 'Hide other pawns'}
+              </Button>
+            </div>
             <ul className="space-y-2">
               {game.players.map((player) => (
                 <li key={player.id} data-testid={`seat-${player.id}`} data-color={player.color} className="text-xs">
@@ -455,62 +497,56 @@ function ColorDot({ color }: { readonly color: PlayerColor }) {
  * One of the 12 arrows. The triangle points the way the maze will travel (`opposite(side)`): press the
  * arrow at the top of a column and that column moves down.
  *
- * The banned arrow is **rendered, disabled and explained** rather than hidden — the rulebook's own hint is
+ * The banned arrow is **rendered, disabled and crossed out** rather than hidden — the rulebook's own hint is
  * that you should be able to see where you may not push ("To better remember where you are not allowed to
  * slide the path tile, leave the tile where it is until it is used again", pg. 2). A vanishing arrow would
- * teach a player nothing.
+ * teach a player nothing. The hover tooltips the arrows carried at L4 were removed on player feedback
+ * (2026-08-05 — ROADMAP L4c, "hints off"): the ban's explanation now lives only in the `aria-label`.
  */
 function ArrowButton({
   insertion,
   banned,
   disabled,
-  facing,
   onInsert,
 }: {
   readonly insertion: Insertion;
   readonly banned: boolean;
   readonly disabled: boolean;
-  readonly facing: Rotation;
   readonly onInsert: (insertion: Insertion) => void;
 }) {
   const { side, line } = insertion;
   const label = `${side} arrow, ${side === 'north' || side === 'south' ? 'column' : 'row'} ${String(line + 1)}`;
-  const tip = banned
-    ? 'The extra tile cannot go straight back in where it was just pushed out — the only exception (pg. 2).'
-    : `Slide the extra tile in here, facing ${String(facing)}° — ${label}.`;
   return (
-    <ActionTip tip={tip} className="flex h-full w-full items-center justify-center">
-      <button
-        type="button"
-        data-testid={`arrow-${side}-${String(line)}`}
-        data-legal={banned ? 'false' : 'true'}
-        disabled={disabled}
-        aria-label={banned ? `${label} — blocked this turn` : `Insert the extra tile at the ${label}`}
-        onClick={() => onInsert(insertion)}
-        className={cn(
-          'flex h-full w-full items-center justify-center p-0.5',
-          !disabled && 'cursor-pointer hover:brightness-110',
-          disabled && !banned && 'opacity-40',
-        )}
-      >
-        {/* A fixed square glyph rather than `h-full w-full`: the frame's arrow row would otherwise size
-            itself from an SVG with no intrinsic height, and the north/south arrows would come out taller
-            than the east/west ones are wide. */}
-        {/* Hedgeglow (L4b): a gilt spearhead on the garden's own shadow-green, so the frame belongs to the
-            same board as the maze. A banned arrow keeps the shape and loses the gold. */}
-        <svg viewBox="0 0 100 100" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden>
-          <path
-            d="M 18 22 L 82 22 L 50 82 Z"
-            transform={`rotate(${String(ARROW_SPIN[side])} 50 50)`}
-            fill={banned ? '#6f7a6c' : HEDGE.gilt}
-            stroke={banned ? '#4a534a' : HEDGE.medal}
-            strokeWidth={6}
-            strokeLinejoin="round"
-          />
-          {banned && <path d="M 20 20 L 80 80" stroke="#b91c1c" strokeWidth={12} strokeLinecap="round" />}
-        </svg>
-      </button>
-    </ActionTip>
+    <button
+      type="button"
+      data-testid={`arrow-${side}-${String(line)}`}
+      data-legal={banned ? 'false' : 'true'}
+      disabled={disabled}
+      aria-label={banned ? `${label} — blocked this turn` : `Insert the extra tile at the ${label}`}
+      onClick={() => onInsert(insertion)}
+      className={cn(
+        'flex h-full w-full items-center justify-center p-0.5',
+        !disabled && 'cursor-pointer hover:brightness-110',
+        disabled && !banned && 'opacity-40',
+      )}
+    >
+      {/* A fixed square glyph rather than `h-full w-full`: the frame's arrow row would otherwise size
+          itself from an SVG with no intrinsic height, and the north/south arrows would come out taller
+          than the east/west ones are wide. */}
+      {/* Hedgeglow (L4b): a gilt spearhead on the garden's own shadow-green, so the frame belongs to the
+          same board as the maze. A banned arrow keeps the shape and loses the gold. */}
+      <svg viewBox="0 0 100 100" className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden>
+        <path
+          d="M 18 22 L 82 22 L 50 82 Z"
+          transform={`rotate(${String(ARROW_SPIN[side])} 50 50)`}
+          fill={banned ? '#6f7a6c' : HEDGE.gilt}
+          stroke={banned ? '#4a534a' : HEDGE.medal}
+          strokeWidth={6}
+          strokeLinejoin="round"
+        />
+        {banned && <path d="M 20 20 L 80 80" stroke="#b91c1c" strokeWidth={12} strokeLinecap="round" />}
+      </svg>
+    </button>
   );
 }
 

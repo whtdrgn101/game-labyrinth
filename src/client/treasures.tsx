@@ -240,16 +240,25 @@ const ICONS: Readonly<Record<TreasureName, readonly Mark[]>> = {
     p('M8.2 18.6 L15.8 18.6 M10.6 18.6 L10.6 21.6 M13.4 18.6 L13.4 21.6', { line: 1.1, knock: true }),
   ],
   // Eight legs — but the *body* has to survive too: the first draft's small body and thin long legs read
-  // as a starburst. Heavier body, shorter and thicker legs.
+  // as a starburst. Heavier body, shorter and thicker legs. L4c (playtest feedback, 2026-08-05): a **knee**
+  // in every leg and a pair of fangs — straight spokes still read as radiating lines, and the arch + the
+  // chelicerae are what say *spider* rather than *generic bug*.
   spider: [
     disc(12, 14.2, 5.4),
     disc(12, 7.6, 3.2),
+    // Each leg is two segments meeting at a raised knee — the renderer's round joins draw the joint. Front
+    // knees point up, the rear pair sweeps back, tips splayed wider than the knees.
     p(
-      'M7.6 10.8 L3.6 7.6 M7 13.6 L2.4 12.6 M7.2 16.8 L3 18.8 M9.6 18.6 L7.4 21.8 M16.4 10.8 L20.4 7.6 M17 13.6 L21.6 12.6 M16.8 16.8 L21 18.8 M14.4 18.6 L16.6 21.8',
+      'M9.4 9.2 L5.4 6.4 L1.8 9.4 M8.6 11.6 L3.6 9.8 L1.2 13 M8.4 14.4 L3.2 14 L1.6 18 M9.4 17.4 L4.8 18.6 L3 22.2 M14.6 9.2 L18.6 6.4 L22.2 9.4 M15.4 11.6 L20.4 9.8 L22.8 13 M15.6 14.4 L20.8 14 L22.4 18 M14.6 17.4 L19.2 18.6 L21 22.2',
       {
         line: 2,
       },
     ),
+    // The fangs: two chelicerae bowing out and *converging* — tips pointing at each other; the first
+    // draft's up-and-out tips read as ears. Filled tapers rather than strokes (the lizard-tail lesson —
+    // a hairline curve vanishes at tile size).
+    p('M9.7 5.4 C8.4 3.9 8.8 2.2 11.2 1.6 C10.8 2.7 10.6 4.2 10.9 5.2 Z'),
+    p('M14.3 5.4 C15.6 3.9 15.2 2.2 12.8 1.6 C13.2 2.7 13.4 4.2 13.1 5.2 Z'),
     disc(10.7, 7.2, 0.8, { knock: true }),
     disc(13.3, 7.2, 0.8, { knock: true }),
   ],

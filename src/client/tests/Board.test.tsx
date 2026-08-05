@@ -23,7 +23,17 @@ vi.mock('../api', async (importOriginal) => {
 
 import * as api from '../api';
 import LabyrinthBoard from '../Board';
-import { activeSquare, afterOneTurn, boardProps, endedGame, readyToMove, seededGame, view, withStack } from './helpers';
+import {
+  activeSquare,
+  afterOneTurn,
+  boardProps,
+  endedGame,
+  play,
+  readyToMove,
+  seededGame,
+  view,
+  withStack,
+} from './helpers';
 
 const act = vi.mocked(api.act);
 
@@ -116,12 +126,17 @@ describe('the 12 arrows', () => {
     expect(banned.getAttribute('aria-label')).toContain('blocked this turn');
   });
 
-  it('explains the banned arrow on hover rather than hiding it (pg. 2’s own hint)', async () => {
+  // L4c (player feedback, 2026-08-05): hints are off for this game, so the arrows carry no ActionTip. The
+  // banned arrow still shows itself — crossed out, disabled — and still explains itself, but statically,
+  // through its aria-label rather than a hover hint.
+  it('offers no hover tooltip — hints are off for this game (L4c)', () => {
     renderBoard(view(afterOneTurn(), ['p1', 'p2']));
-    // The tip hangs off the ActionTip wrapper, not the button — which is exactly why a *disabled* arrow can
-    // still explain itself. (The shared tip opens after a 150ms hover delay, hence `findBy`.)
-    fireEvent.pointerEnter(screen.getByTestId('arrow-south-1').parentElement!);
-    expect((await screen.findByRole('tooltip')).textContent).toContain('cannot go straight back in');
+    const banned = screen.getByTestId('arrow-south-1');
+    fireEvent.pointerEnter(banned);
+    fireEvent.pointerEnter(banned.parentElement!);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(banned.getAttribute('aria-describedby')).toBeNull();
+    expect(banned.getAttribute('aria-label')).toContain('blocked this turn');
   });
 
   it('sends INSERT with the chosen facing when an arrow is pressed', () => {
@@ -354,6 +369,24 @@ describe('seat binding', () => {
     expect(screen.getByTestId('labyrinth-banner').textContent).toContain('You are Ann');
   });
 
+  // L4c (player feedback, 2026-08-05): "You are Ann" only helps if you also know which colour Ann pushes
+  // round the maze, so each held seat's name wears its pawn. Colour from the view (ruling 12), never the
+  // shell's palette — same rule as the board pawns.
+  it('wears the seat’s pawn colour beside “You are” (L4c)', () => {
+    renderBoard(view(afterOneTurn(), ['p1']), { controlledIds: ['p1'] });
+    const banner = screen.getByTestId('labyrinth-banner');
+    expect(banner.textContent).toContain('You are Ann');
+    expect(within(banner).getByTestId('banner-pawn-p1').getAttribute('data-color')).toBe('red');
+  });
+
+  it('shows one badge per held seat when this client drives several', () => {
+    renderBoard(view(seededGame(), ['p1', 'p2']), { controlledIds: ['p1', 'p2'] });
+    const banner = screen.getByTestId('labyrinth-banner');
+    expect(banner.textContent).toContain('You are Ann, Bob');
+    expect(within(banner).getByTestId('banner-pawn-p1').getAttribute('data-color')).toBe('red');
+    expect(within(banner).getByTestId('banner-pawn-p2').getAttribute('data-color')).toBe('yellow');
+  });
+
   it('refuses to act for a bot seat, and while the shell is busy', () => {
     renderBoard(view(seededGame(), ['p1']), { bots: ['p1'] });
     expect((screen.getByTestId('arrow-north-3') as HTMLButtonElement).disabled).toBe(true);
@@ -361,6 +394,56 @@ describe('seat binding', () => {
 
     renderBoard(view(seededGame(), ['p1']), { busy: true });
     expect((screen.getByTestId('arrow-north-3') as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+/**
+ * L4c (player feedback, 2026-08-05): pawns are drawn on top of the tile art, so a pawn parked on a treasure
+ * hides it. The toggle hides every pawn this client does not hold so the ground can be read — a peek, not a
+ * mode, hence the reset on the next recorded action.
+ */
+describe('hiding the other pawns', () => {
+  it('hides every pawn but this client’s own while pressed, and restores them', () => {
+    renderBoard(view(seededGame(), ['p1']), { controlledIds: ['p1'] });
+    expect(screen.getByTestId('pawn-p2')).toBeDefined();
+
+    const toggle = screen.getByTestId('toggle-pawns');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('pawn-p1')).toBeDefined();
+    expect(screen.queryByTestId('pawn-p2')).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('pawn-p2')).toBeDefined();
+  });
+
+  it('keeps only the pawn on the clock in hotseat — the device is theirs right now', () => {
+    const state = afterOneTurn();
+    expect(state.players[state.activePlayerIndex]!.id).toBe('p2');
+    renderBoard(view(state, null), { controlledIds: null });
+    fireEvent.click(screen.getByTestId('toggle-pawns'));
+    expect(screen.queryByTestId('pawn-p1')).toBeNull();
+    expect(screen.getByTestId('pawn-p2')).toBeDefined();
+  });
+
+  it('blinds the eye, not the screen reader — the square still names who stands on it', () => {
+    const state = seededGame();
+    renderBoard(view(state, ['p1']), { controlledIds: ['p1'] });
+    fireEvent.click(screen.getByTestId('toggle-pawns'));
+    const corner = START_CORNERS.yellow; // Bob's, and his pawn is hidden
+    const tile = screen.getByTestId(`tile-${String(corner.row)}-${String(corner.col)}`);
+    expect(tile.getAttribute('aria-label')).toContain('Bob here');
+  });
+
+  it('brings the pawns back after the next recorded action — a peek, not a mode', () => {
+    const state = seededGame();
+    const { rerender } = render(<LabyrinthBoard {...boardProps(view(state, ['p1']), { controlledIds: ['p1'] })} />);
+    fireEvent.click(screen.getByTestId('toggle-pawns'));
+    expect(screen.queryByTestId('pawn-p2')).toBeNull();
+
+    const next = play(state, { type: 'INSERT', insertion: { side: 'north', line: 1 }, rotation: 0 });
+    rerender(<LabyrinthBoard {...boardProps(view(next, ['p1']), { controlledIds: ['p1'] })} />);
+    expect(screen.getByTestId('pawn-p2')).toBeDefined();
   });
 });
 

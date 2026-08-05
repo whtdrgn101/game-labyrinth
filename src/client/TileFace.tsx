@@ -282,6 +282,45 @@ export function TileFace({ tile, fixed = false, home = null, pawns = [], reachab
 }
 
 /**
+ * A pawn as an inline badge — the banner's "you are *this* colour" (player feedback, 2026-08-05 — ROADMAP
+ * L4c: a name alone did not tie the player to a piece on the board). Drawn with the board pawn's own
+ * silhouette and inks, so the badge *is* the piece, just off the board. Decorative on purpose: the name it
+ * sits beside carries the information for assistive tech, hence `aria-hidden`.
+ */
+export function PawnBadge({
+  color,
+  size = 15,
+  className,
+  testId,
+}: {
+  readonly color: PlayerColor;
+  readonly size?: number;
+  readonly className?: string;
+  readonly testId?: string;
+}) {
+  return (
+    <svg
+      viewBox="28 26 44 44"
+      width={size}
+      height={size}
+      className={className}
+      data-testid={testId}
+      data-color={color}
+      aria-hidden
+    >
+      <path
+        d={pawnBody(50, 50, 1)}
+        fill={PAWN_INK[color]}
+        stroke={HEDGE.medal}
+        strokeWidth={2.6}
+        strokeLinejoin="round"
+      />
+      <circle cx={50} cy={39} r={8.5} fill={PAWN_INK[color]} stroke={HEDGE.medal} strokeWidth={2.6} />
+    </svg>
+  );
+}
+
+/**
  * A tile on its own — the extra tile beside the board, and anywhere else a single tile is shown outside
  * the maze grid. `size` is in pixels. It carries a gilt frame the maze tiles do not: off the board, a tile
  * is a *card in your hand*, and the frame is what says so.
