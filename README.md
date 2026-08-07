@@ -1,6 +1,6 @@
 # @game-hub/game-labyrinth
 
-Ravensburger's **_The aMAZEing Labyrinth_** as a [Game Hub](https://github.com/whtdrgn101/container) game
+Ravensburger's **_The aMAZEing Labyrinth_** as a [Game Hub](https://github.com/whtdrgn101/game-hub) game
 package: a 7×7 sliding maze where you push the walls around to reach your treasures, and where your push can
 carry another player's pawn off one edge and back on at the other.
 

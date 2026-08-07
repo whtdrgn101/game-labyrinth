@@ -183,7 +183,7 @@ you to "decide from the redacted view" without naming the guard's shape.
 
 ### 8. Published metadata points at a repository an external author may not be able to read
 
-Both tarballs' `repository` field is `git+https://github.com/whtdrgn101/container.git`. If that repo isn't
+Both tarballs' `repository` field is `git+https://github.com/whtdrgn101/game-hub.git`. If that repo isn't
 public, the npm page's "Repository" link is a dead end for anyone who isn't the owner — and the recipe and
 design docs it links to are the only documentation these packages have. Both tarballs *do* ship `README.md`
 and `LICENSE` (checked), so the essentials are there.
